@@ -6,7 +6,7 @@ describe BqStream do
   end
 
   it 'can be configured' do
-    BqStream.configure do |config|
+    BqStream.configuration do |config|
       config.client_id = 'client_id'
       config.service_email = 'service_email'
       config.key = 'key'
@@ -18,10 +18,11 @@ describe BqStream do
     expect(BqStream.configuration.key).to eq('key')
     expect(BqStream.configuration.project_id).to eq('project_id')
     expect(BqStream.configuration.data_set).to_not eq('production')
+    expect(BqStream.configuration.bq_table_name).to eq('bq_table')
     expect(BqStream::QueuedItem.all).to be_empty
   end
 
-  it 'should write queued item records to table' do
+  xit 'should write queued item records to table' do
     class TableFirst < ActiveRecord::Base
       def self.build_tables
         connection.create_table :table_firsts, force: true do |t|
@@ -44,8 +45,8 @@ describe BqStream do
       end
     end
 
-    TableOne.build_tables rescue nil
-    TableTwo.build_tables rescue nil
+    TableOne.build_tables # rescue nil
+    TableTwo.build_tables # rescue nil
 
     TableOne.create(name: 'primary record',
                     description: 'first into the table',
@@ -59,5 +60,9 @@ describe BqStream do
   end
 
   xit 'should send queded items to bigquery then delete them' do
+    # stub calls to BigQuery
+    BqStream.send_to_bigquery
+    # expect methods from BigQuery gem to be called
+    expect(BqStream::QueuedItem.all).to be_empty
   end
 end
