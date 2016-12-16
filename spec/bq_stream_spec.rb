@@ -13,56 +13,84 @@ describe BqStream do
       config.project_id = 'project_id'
     end
 
-    expect(BqStream.configuration.client_id).to eq('client_id')
-    expect(BqStream.configuration.service_email).to eq('service_email')
-    expect(BqStream.configuration.key).to eq('key')
-    expect(BqStream.configuration.project_id).to eq('project_id')
-    expect(BqStream.configuration.data_set).to_not eq('production')
-    expect(BqStream.configuration.bq_table_name).to eq('bq_table')
+    expect(BqStream.client_id).to eq('client_id')
+    expect(BqStream.service_email).to eq('service_email')
+    expect(BqStream.key).to eq('key')
+    expect(BqStream.project_id).to eq('project_id')
+    expect(BqStream.data_set).to_not eq('production')
+    expect(BqStream.bq_table_name).to eq('queued_items')
     expect(BqStream::QueuedItem.all).to be_empty
   end
 
-  xit 'should write queued item records to table' do
-    class TableFirst < ActiveRecord::Base
-      def self.build_tables
-        connection.create_table :table_firsts, force: true do |t|
-          t.string :name
-          t.text :description
-          t.boolean :required
-          t.timestamps
+  context 'should be able to queue and dequeue items from table' do
+    before(:each) do
+      class TableFirst < ActiveRecord::Base
+        # unless bq_attributes is used nothing gets written
+        # bq_attributes only: [:sym, :sym, :sym]
+        # bq_attributes :all
+        # bq_attributes except: [...]
+
+        # def self.bq_attributes(opts = {})
+        #   if opts == :all
+        #     columns.each { |column_name| method_foo(column_name) }
+        #   elsif opts[:only]
+        #     raise "opts  .... " unless opts[:only].is_a? Array
+        #     opts[:only].each { |column_name| method_foo(column_name) }
+        #   elsif ...
+        #   else
+        #     raise
+        #   end
+        # end
+
+        def self.build_table
+          connection.create_table :table_firsts, force: true do |t|
+            t.string :name
+            t.text :description
+            t.boolean :required
+            t.timestamps
+          end
         end
       end
-    end
 
-    class TableSecond < ActiveRecord::Base
-      def self.build_tables
-        connection.create_table :table_seconds, force: true do |t|
-          t.string :name
-          t.string :status
-          t.integer :rank
-          t.timestamps
+      class TableSecond < ActiveRecord::Base
+        def self.build_table
+          connection.create_table :table_seconds, force: true do |t|
+            t.string :name
+            t.string :status
+            t.integer :rank
+            t.timestamps
+          end
         end
       end
+
+      TableFirst.build_table
+      TableSecond.build_table
+
+      TableFirst.create(name: 'primary record',
+                        description: 'first into the table',
+                        required: true)
+      TableSecond.create(name: 'secondary record',
+                         status: 'active',
+                         rank: 1)
+      TableFirst.update(1, required: false)
     end
 
-    TableOne.build_tables # rescue nil
-    TableTwo.build_tables # rescue nil
+    xit 'should write queued item records to table' do
+      expect(BqStream::QueuedItem.all.as_json).to eq([{
+        'table_name' => 'TableFirst',
+        'attr' => 'name',
+        'new_value' => 'primary record',
+        'updated_at' => Time.now
+      },
+        {} #  x6 more
+      ])
+    end
 
-    TableOne.create(name: 'primary record',
-                    description: 'first into the table',
-                    required: true)
-    TableTwo.create(name: 'secondary record',
-                    status: 'active',
-                    rank: 1)
-    TableOne.update(1, required: false)
-
-    expect(BqStream::QueuedItem.all.as_json).to =~ []
-  end
-
-  xit 'should send queded items to bigquery then delete them' do
-    # stub calls to BigQuery
-    BqStream.send_to_bigquery
-    # expect methods from BigQuery gem to be called
-    expect(BqStream::QueuedItem.all).to be_empty
+    xit 'should send queded items to bigquery then delete them' do
+      # stub calls to BigQuery
+      BqStream.send_to_bigquery
+      # expect methods from BigQuery gem to be called
+      expect(BqStream::QueuedItem.all).to be_empty
+    end
   end
 end
