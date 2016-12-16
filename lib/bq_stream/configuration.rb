@@ -1,7 +1,6 @@
 module BqStream
   # configuration utility
   module Configuration
-
     def configuration
       config_reset
       yield self
@@ -23,7 +22,6 @@ module BqStream
     end
 
     def config_reset
-      raise "must implement"
     end
 
     def config_initialized
