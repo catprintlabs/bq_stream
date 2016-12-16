@@ -1,4 +1,5 @@
 require 'active_record'
+require 'active_record_base'
 require 'bq_stream/version'
 require 'bq_stream/configuration'
 require 'bq_stream/queued_item'
