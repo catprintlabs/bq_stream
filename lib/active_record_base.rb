@@ -13,8 +13,18 @@ class ActiveRecord::Base
       end
       all_atr
     else
-      raise 'You must declare an opts hash with a key of :all, :only or :except) '\
-        'and a value as an array, if using :only or :except.'
+      raise 'You must declare an opts hash with a key of :all, :only '\
+        'or :except) and a value as an array, if using :only or :except.'
     end
+  end
+
+  def queue_item
+    previous_changes.each do |i|
+      BqStream::QueuedItem.create(table_name: self.class.table_name,
+                                  attr: i[0], new_value: i[1][1])
+    end
+  end
+
+  def dequeue_item
   end
 end
