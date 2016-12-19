@@ -100,9 +100,10 @@ describe BqStream do
                         listing: 'important',
                         level: 61)
       TableFirst.update(1, required: false)
+      TableSecond.destroy(1)
     end
 
-    it 'should write queued item records to table' do
+    it 'should write queued item records to table when bq_attributes is called' do
       expect(BqStream::QueuedItem.all.as_json).to eq([
       {
         'id' => 1,
@@ -198,6 +199,14 @@ describe BqStream do
         'record_id' => 1,
         'attr' => 'required',
         'new_value' => 'false',
+        'updated_at' => @time_stamp
+      },
+      {
+        'id' => 13,
+        'table_name' => 'TableSecond',
+        'record_id' => 1,
+        'attr' => nil,
+        'new_value' => nil,
         'updated_at' => @time_stamp
       }
       ])
