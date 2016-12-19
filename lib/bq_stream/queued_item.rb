@@ -6,6 +6,7 @@ module BqStream
 
       connection.create_table(table_name, force: true) do |t|
         t.string   :table_name
+        t.integer  :record_id
         t.string   :attr
         t.binary   :new_value
         t.datetime :updated_at
