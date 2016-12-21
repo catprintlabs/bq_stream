@@ -29,7 +29,4 @@ class ActiveRecord::Base
       end
     end
   end
-
-  def dequeue_item
-  end
 end
