@@ -12,15 +12,20 @@ describe BqStream do
   before(:each) do
     BigQuery::Client.class_eval do
       attr_accessor :initial_args
-      attr_reader :inserted_records
+      attr_reader :inserted_records, :bq_table_columns
       def initialize(*args)
         @inserted_records = []
+        @bq_table_columns = []
         @initial_args = args
       end
 
       def insert(*args)
         args[1][:updated_at] = Time.parse('2017-01-01 00:00:00 +0000')
         inserted_records << [args]
+      end
+
+      def create(*args)
+        bq_table_columns << [args]
       end
     end
     BqStream.class_eval do
@@ -49,6 +54,7 @@ describe BqStream do
     expect(BqStream.project_id).to eq('project_id')
     expect(BqStream.dataset).to_not eq('production')
     expect(BqStream.queued_items_table_name).to eq('queued_items')
+    expect(BqStream.bq_table_name).to eq('bq_datastream')
     expect(BqStream::QueuedItem.all).to be_empty
   end
 
@@ -331,6 +337,24 @@ describe BqStream do
                     attr: nil,
                     new_value: nil,
                     updated_at: @time_stamp }]]])
+    end
+  end
+  context 'interactions with big query tables' do
+    it 'should return the big query table name' do
+      @bq_writer.stub(:tables) { ['bq_datastream'] }
+      expect(@bq_writer.tables).to include('bq_datastream')
+    end
+
+    it 'should not return a big query table name and create one' do
+      @bq_writer.stub(:tables) { [] }
+      expect(@bq_writer.tables).not_to eq('bq_datastream')
+      BqStream.create_bq_table
+      expect(BqStream.bq_writer.bq_table_columns)
+        .to eq([[['bq_datastream',
+                  { table_name: { type: 'STRING' },
+                    record_id: { type: 'INTEGER' },
+                    new_value: { type: 'STRING' },
+                    updated_at: { type: 'DATETIME' } }]]])
     end
   end
 end
