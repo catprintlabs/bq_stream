@@ -25,10 +25,18 @@ module BqStream
   def self.dequeue_items
     BqStream::QueuedItem.all.each do |i|
       @bq_writer.insert(bq_table_name, table_name: i.table_name,
-                                      record_id: i.record_id, attr: i.attr,
-                                      new_value: i.new_value,
-                                      updated_at: Time.now)
+                                       record_id: i.record_id, attr: i.attr,
+                                       new_value: i.new_value,
+                                       updated_at: Time.now)
       BqStream::QueuedItem.destroy(i.id)
     end
+  end
+
+  def self.create_bq_table
+    bq_table_schema = { table_name: { type: 'STRING' },
+                        record_id:  { type: 'INTEGER' },
+                        new_value:  { type: 'STRING' },
+                        updated_at: { type: 'DATETIME' } }
+    @bq_writer.create(bq_table_name, bq_table_schema)
   end
 end
