@@ -8,7 +8,8 @@ module BqStream
   define_setting :key
   define_setting :project_id
   define_setting :dataset
-  define_setting :bq_table_name, 'queued_items'
+  define_setting :queued_items_table_name, 'queued_items'
+  define_setting :bq_table_name, 'bq_datastream'
 
   def self.config_initialized
     QueuedItem.build_table
@@ -23,7 +24,7 @@ module BqStream
 
   def self.dequeue_items
     BqStream::QueuedItem.all.each do |i|
-      @bq_writer.insert('table_name', table_name: i.table_name,
+      @bq_writer.insert(bq_table_name, table_name: i.table_name,
                                       record_id: i.record_id, attr: i.attr,
                                       new_value: i.new_value,
                                       updated_at: Time.now)

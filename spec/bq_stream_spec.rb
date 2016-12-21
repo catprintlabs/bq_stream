@@ -48,7 +48,7 @@ describe BqStream do
     expect(BqStream.key).to eq('key')
     expect(BqStream.project_id).to eq('project_id')
     expect(BqStream.dataset).to_not eq('production')
-    expect(BqStream.bq_table_name).to eq('queued_items')
+    expect(BqStream.queued_items_table_name).to eq('queued_items')
     expect(BqStream::QueuedItem.all).to be_empty
   end
 
@@ -128,12 +128,10 @@ describe BqStream do
     end
 
     after(:each) do
-      BqStream::QueuedItem.destroy_all # connection.drop_table(BqStream::QueuedItem.table_name)
-      # binding.pry
+      BqStream::QueuedItem.destroy_all
     end
 
     it 'should write queued item to table when bq_attributes is called' do
-      # binding.pry
       expect(BqStream::QueuedItem.all.as_json)
         .to eq([{
                  'id' => 1,
@@ -242,7 +240,6 @@ describe BqStream do
     end
 
     it 'should send queueded items to bigquery then delete them' do
-      # binding.pry
       BqStream.dequeue_items
       expect(BqStream::QueuedItem.all).to be_empty
       expect(BqStream.bq_writer.initial_args)
@@ -256,79 +253,79 @@ describe BqStream do
                  }
                ])
       expect(BqStream.bq_writer.inserted_records)
-        .to eq([[['table_name',
+        .to eq([[['bq_datastream',
                   { table_name: 'TableFirst',
                     record_id: @first_record.id,
                     attr: 'name',
                     new_value: 'primary record',
                     updated_at: @time_stamp }]],
-                [['table_name',
+                [['bq_datastream',
                   { table_name: 'TableFirst',
                     record_id: @first_record.id,
                     attr: 'description',
                     new_value: 'first into the table',
                     updated_at: @time_stamp }]],
-                [['table_name',
+                [['bq_datastream',
                   { table_name: 'TableFirst',
                     record_id: @first_record.id,
                     attr: 'required',
                     new_value: 'true',
                     updated_at: @time_stamp }]],
-                [['table_name',
+                [['bq_datastream',
                   { table_name: 'TableFirst',
                     record_id: @first_record.id,
                     attr: 'created_at',
                     new_value: '2017-01-01 00:00:00 UTC',
                     updated_at: @time_stamp }]],
-                [['table_name',
+                [['bq_datastream',
                   { table_name: 'TableFirst',
                     record_id: @first_record.id,
                     attr: 'updated_at',
                     new_value: '2017-01-01 00:00:00 UTC',
                     updated_at: @time_stamp }]],
-                [['table_name',
+                [['bq_datastream',
                   { table_name: 'TableFirst',
                     record_id: @first_record.id,
                     attr: 'id',
                     new_value: @first_record.id.to_s,
                     updated_at: @time_stamp }]],
-                [['table_name',
+                [['bq_datastream',
                   { table_name: 'TableSecond',
                     record_id: @second_record.id,
                     attr: 'name',
                     new_value: 'secondary record',
                     updated_at: @time_stamp }]],
-                [['table_name',
+                [['bq_datastream',
                   { table_name: 'TableSecond',
                     record_id: @second_record.id,
                     attr: 'status',
                     new_value: 'active',
                     updated_at: @time_stamp }]],
-                [['table_name',
+                [['bq_datastream',
                   { table_name: 'TableThird',
                     record_id: @third_record.id,
                     attr: 'name',
                     new_value: 'third record',
                     updated_at: @time_stamp }]],
-                [['table_name',
+                [['bq_datastream',
                   { table_name: 'TableThird',
                     record_id: @third_record.id,
                     attr: 'notes',
                     new_value: 'remember',
                     updated_at: @time_stamp }]],
-                [['table_name',
+                [['bq_datastream',
                   { table_name: 'TableThird',
                     record_id: @third_record.id,
                     attr: 'updated_at',
                     new_value: '2017-01-01 00:00:00 UTC',
                     updated_at: @time_stamp }]],
-                [['table_name',
+                [['bq_datastream',
                   { table_name: 'TableFirst',
                     record_id: @first_record.id,
                     attr: 'required',
                     new_value: 'false',
                     updated_at: @time_stamp }]],
-                [['table_name',
+                [['bq_datastream',
                   { table_name: 'TableSecond',
                     record_id: @second_record.id,
                     attr: nil,

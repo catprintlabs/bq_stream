@@ -2,7 +2,7 @@ module BqStream
   class QueuedItem < ActiveRecord::Base
 
     def self.build_table
-      self.table_name = BqStream.bq_table_name
+      self.table_name = BqStream.queued_items_table_name
 
       connection.create_table(table_name, force: true) do |t|
         t.string   :table_name
