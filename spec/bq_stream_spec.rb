@@ -63,9 +63,17 @@ describe BqStream do
       expect(BqStream::QueuedItem.all).to be_empty
     end
 
-    it 'should return an existing big query table name' do
+    it 'should return an existing bq table and not create a new table' do
       @bq_writer.stub(:tables) { ['bq_datastream'] }
-      expect(@bq_writer.tables).to include('bq_datastream')
+      BqStream.create_bq_table unless @bq_writer
+                                      .tables
+                                      .include?(BqStream.bq_table_name)
+      expect(BqStream.bq_writer.bq_table_columns)
+        .to eq([[['bq_datastream',
+                  { table_name: { type: 'STRING' },
+                    record_id: { type: 'INTEGER' },
+                    new_value: { type: 'STRING' },
+                    updated_at: { type: 'DATETIME' } }]]])
     end
 
     it 'should create the big query table' do
