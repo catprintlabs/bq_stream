@@ -20,6 +20,7 @@ module BqStream
     opts['project_id']    = project_id
     opts['dataset']       = dataset
     @bq_writer = BigQuery::Client.new(opts)
+    create_bq_table unless @bq_writer.tables.include?(bq_table_name)
   end
 
   def self.dequeue_items
