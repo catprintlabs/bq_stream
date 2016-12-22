@@ -1,6 +1,5 @@
 module BqStream
   class QueuedItem < ActiveRecord::Base
-
     def self.build_table
       self.table_name = BqStream.queued_items_table_name
 
