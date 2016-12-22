@@ -27,6 +27,10 @@ describe BqStream do
       def create(*args)
         bq_table_columns << [args]
       end
+
+      def tables
+        []
+      end
     end
     BqStream.class_eval do
       class << self
@@ -47,15 +51,31 @@ describe BqStream do
     expect(BqStream::VERSION).not_to be nil
   end
 
-  it 'can be configured' do
-    expect(BqStream.client_id).to eq('client_id')
-    expect(BqStream.service_email).to eq('service_email')
-    expect(BqStream.key).to eq('key')
-    expect(BqStream.project_id).to eq('project_id')
-    expect(BqStream.dataset).to_not eq('production')
-    expect(BqStream.queued_items_table_name).to eq('queued_items')
-    expect(BqStream.bq_table_name).to eq('bq_datastream')
-    expect(BqStream::QueuedItem.all).to be_empty
+  context 'during configuration' do
+    it 'can be configured' do
+      expect(BqStream.client_id).to eq('client_id')
+      expect(BqStream.service_email).to eq('service_email')
+      expect(BqStream.key).to eq('key')
+      expect(BqStream.project_id).to eq('project_id')
+      expect(BqStream.dataset).to_not eq('production')
+      expect(BqStream.queued_items_table_name).to eq('queued_items')
+      expect(BqStream.bq_table_name).to eq('bq_datastream')
+      expect(BqStream::QueuedItem.all).to be_empty
+    end
+
+    it 'should return an existing big query table name' do
+      @bq_writer.stub(:tables) { ['bq_datastream'] }
+      expect(@bq_writer.tables).to include('bq_datastream')
+    end
+
+    it 'should create the big query table' do
+      expect(BqStream.bq_writer.bq_table_columns)
+        .to eq([[['bq_datastream',
+                  { table_name: { type: 'STRING' },
+                    record_id: { type: 'INTEGER' },
+                    new_value: { type: 'STRING' },
+                    updated_at: { type: 'DATETIME' } }]]])
+    end
   end
 
   context 'should be able to queue and dequeue items from table' do
@@ -337,24 +357,6 @@ describe BqStream do
                     attr: nil,
                     new_value: nil,
                     updated_at: @time_stamp }]]])
-    end
-  end
-  context 'interactions with big query tables' do
-    it 'should return the big query table name' do
-      @bq_writer.stub(:tables) { ['bq_datastream'] }
-      expect(@bq_writer.tables).to include('bq_datastream')
-    end
-
-    it 'should not return a big query table name and create one' do
-      @bq_writer.stub(:tables) { [] }
-      expect(@bq_writer.tables).not_to eq('bq_datastream')
-      BqStream.create_bq_table
-      expect(BqStream.bq_writer.bq_table_columns)
-        .to eq([[['bq_datastream',
-                  { table_name: { type: 'STRING' },
-                    record_id: { type: 'INTEGER' },
-                    new_value: { type: 'STRING' },
-                    updated_at: { type: 'DATETIME' } }]]])
     end
   end
 end
