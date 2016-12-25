@@ -20,7 +20,7 @@ module BqStream
     opts['project_id']    = project_id
     opts['dataset']       = dataset
     @bq_writer = BigQuery::Client.new(opts)
-    create_bq_table unless @bq_writer.tables.include?(bq_table_name)
+    create_bq_table unless @bq_writer.tables_formatted.include?(bq_table_name)
   end
 
   def self.dequeue_items
@@ -34,10 +34,10 @@ module BqStream
   end
 
   def self.create_bq_table
-    bq_table_schema = { table_name: { type: 'STRING' },
-                        record_id:  { type: 'INTEGER' },
-                        new_value:  { type: 'STRING' },
-                        updated_at: { type: 'DATETIME' } }
-    @bq_writer.create(bq_table_name, bq_table_schema)
+    bq_table_schema = { table_name:   { type: 'STRING', mode: 'REQUIRED' },
+                        record_id:    { type: 'INTEGER', mode: 'REQUIRED' },
+                        new_value:    { type: 'STRING', mode: 'NULLABLE' },
+                        updated_at:   { type: 'TIMESTAMP', mode: 'REQUIRED' } }
+    @bq_writer.create_table(bq_table_name, bq_table_schema)
   end
 end
