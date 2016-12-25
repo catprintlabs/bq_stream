@@ -24,11 +24,11 @@ describe BqStream do
         inserted_records << [args]
       end
 
-      def create(*args)
+      def create_table(*args)
         bq_table_columns << [args]
       end
 
-      def tables
+      def tables_formatted
         []
       end
     end
@@ -64,25 +64,25 @@ describe BqStream do
     end
 
     it 'should return an existing bq table and not create a new table' do
-      @bq_writer.stub(:tables) { ['bq_datastream'] }
+      @bq_writer.stub(:tables_formatted) { ['bq_datastream'] }
       BqStream.create_bq_table unless @bq_writer
-                                      .tables
+                                      .tables_formatted
                                       .include?(BqStream.bq_table_name)
       expect(BqStream.bq_writer.bq_table_columns)
         .to eq([[['bq_datastream',
-                  { table_name: { type: 'STRING' },
-                    record_id: { type: 'INTEGER' },
-                    new_value: { type: 'STRING' },
-                    updated_at: { type: 'DATETIME' } }]]])
+                  { table_name: { type: 'STRING', mode: 'REQUIRED' },
+                    record_id:  { type: 'INTEGER', mode: 'REQUIRED' },
+                    new_value:  { type: 'STRING', mode: 'NULLABLE' },
+                    updated_at: { type: 'TIMESTAMP', mode: 'REQUIRED' } }]]])
     end
 
     it 'should create the big query table' do
       expect(BqStream.bq_writer.bq_table_columns)
         .to eq([[['bq_datastream',
-                  { table_name: { type: 'STRING' },
-                    record_id: { type: 'INTEGER' },
-                    new_value: { type: 'STRING' },
-                    updated_at: { type: 'DATETIME' } }]]])
+                  { table_name: { type: 'STRING', mode: 'REQUIRED' },
+                    record_id:  { type: 'INTEGER', mode: 'REQUIRED' },
+                    new_value:  { type: 'STRING', mode: 'NULLABLE' },
+                    updated_at: { type: 'TIMESTAMP', mode: 'REQUIRED' } }]]])
     end
   end
 
