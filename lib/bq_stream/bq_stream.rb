@@ -36,6 +36,7 @@ module BqStream
   def self.create_bq_table
     bq_table_schema = { table_name:   { type: 'STRING', mode: 'REQUIRED' },
                         record_id:    { type: 'INTEGER', mode: 'REQUIRED' },
+                        attr:         { type: 'STRING', mode: 'NULLABLE' },
                         new_value:    { type: 'STRING', mode: 'NULLABLE' },
                         updated_at:   { type: 'TIMESTAMP', mode: 'REQUIRED' } }
     @bq_writer.create_table(bq_table_name, bq_table_schema)
