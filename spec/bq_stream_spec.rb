@@ -72,6 +72,7 @@ describe BqStream do
         .to eq([[['bq_datastream',
                   { table_name: { type: 'STRING', mode: 'REQUIRED' },
                     record_id:  { type: 'INTEGER', mode: 'REQUIRED' },
+                    attr:       { type: 'STRING', mode: 'NULLABLE' },
                     new_value:  { type: 'STRING', mode: 'NULLABLE' },
                     updated_at: { type: 'TIMESTAMP', mode: 'REQUIRED' } }]]])
     end
@@ -81,6 +82,7 @@ describe BqStream do
         .to eq([[['bq_datastream',
                   { table_name: { type: 'STRING', mode: 'REQUIRED' },
                     record_id:  { type: 'INTEGER', mode: 'REQUIRED' },
+                    attr:         { type: 'STRING', mode: 'NULLABLE' },
                     new_value:  { type: 'STRING', mode: 'NULLABLE' },
                     updated_at: { type: 'TIMESTAMP', mode: 'REQUIRED' } }]]])
     end
