@@ -1,3 +1,5 @@
+require 'dotenv'
+Dotenv.load
 require 'active_record'
 require 'active_record_base'
 require 'big_query'
