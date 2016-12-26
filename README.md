@@ -1,8 +1,6 @@
 # BqStream
 
-Welcome to your new gem! In this directory, you'll find the files you need to be able to package up your Ruby library into a gem. Put your Ruby code in the file `lib/bq_stream`. To experiment with that code, run `bin/console` for an interactive prompt.
-
-TODO: Delete this and the text above, and describe your gem
+BqStream can be used Google's BigQuery to send selected model attribute values when records are created, updated and destroyed.  It was created to help better analyze ever-changing records within a project's database.
 
 ## Installation
 
@@ -26,16 +24,29 @@ TODO: Write usage instructions here
 
 ## Development
 
-After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake spec` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
+After checking out the repo, run `bin/setup` to install dependencies. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
 
-To install this gem onto your local machine, run `bundle exec rake install`. To release a new version, update the version number in `version.rb`, and then run `bundle exec rake release`, which will create a git tag for the version, push git commits and tags, and push the `.gem` file to [rubygems.org](https://rubygems.org).
+To install this gem onto your local machine, run `bundle exec rake install`.
+
+## Testing
+
+An RSpec test suite is available to ensure proper functionality. Run `rake spec` to run the tests. There is also a test with a live connection to BigQuery that be called by using:
+
+    $ rspec spec/bq_example
+
+Before live testing you should be sure to have created an `.env` file in the root directory with the followng Google BigQuery credentials:
+
+  + Client Id
+  + Service Email
+  + KEY
+  + Project Id
+  + Dataset
 
 ## Contributing
 
-Bug reports and pull requests are welcome on GitHub at https://github.com/[USERNAME]/bq_stream. This project is intended to be a safe, welcoming space for collaboration, and contributors are expected to adhere to the [Contributor Covenant](http://contributor-covenant.org) code of conduct.
+Bug reports and pull requests are welcome on GitHub at https://github.com/catprintlabs/bq_stream. This project is intended to be a safe, welcoming space for collaboration, and contributors are expected to adhere to the [Contributor Covenant](http://contributor-covenant.org) code of conduct.
 
 
 ## License
 
 The gem is available as open source under the terms of the [MIT License](http://opensource.org/licenses/MIT).
-
