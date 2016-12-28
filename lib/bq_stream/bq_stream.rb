@@ -11,8 +11,7 @@ module BqStream
   define_setting :queued_items_table_name, 'queued_items'
   define_setting :bq_table_name, 'bq_datastream'
 
-  def self.config_initialized
-    QueuedItem.build_table
+  def self.create_bq_writer
     opts = {}
     opts['client_id']     = client_id
     opts['service_email'] = service_email
@@ -20,10 +19,17 @@ module BqStream
     opts['project_id']    = project_id
     opts['dataset']       = dataset
     @bq_writer = BigQuery::Client.new(opts)
+  end
+
+  def self.config_initialized
+    QueuedItem.build_table
+    create_bq_writer
+    create_bq_dataset unless @bq_writer.datasets_formatted.include?(dataset)
     create_bq_table unless @bq_writer.tables_formatted.include?(bq_table_name)
   end
 
   def self.dequeue_items
+    create_bq_writer
     BqStream::QueuedItem.all.each do |i|
       @bq_writer.insert(bq_table_name, table_name: i.table_name,
                                        record_id: i.record_id, attr: i.attr,
@@ -31,6 +37,10 @@ module BqStream
                                        updated_at: Time.now)
       BqStream::QueuedItem.destroy(i.id)
     end
+  end
+
+  def self.create_bq_dataset
+    @bq_writer.create_dataset(dataset)
   end
 
   def self.create_bq_table
