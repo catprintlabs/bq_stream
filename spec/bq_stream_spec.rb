@@ -12,10 +12,11 @@ describe BqStream do
   before(:each) do
     BigQuery::Client.class_eval do
       attr_accessor :initial_args
-      attr_reader :inserted_records, :bq_table_columns
+      attr_reader :inserted_records, :bq_table_columns, :bq_datasets
       def initialize(*args)
         @inserted_records = []
         @bq_table_columns = []
+        @bq_datasets = []
         @initial_args = args
       end
 
@@ -26,6 +27,14 @@ describe BqStream do
 
       def create_table(*args)
         bq_table_columns << [args]
+      end
+
+      def create_dataset(*args)
+        bq_datasets << [args]
+      end
+
+      def datasets_formatted
+        []
       end
 
       def tables_formatted
@@ -61,6 +70,11 @@ describe BqStream do
       expect(BqStream.queued_items_table_name).to eq('queued_items')
       expect(BqStream.bq_table_name).to eq('bq_datastream')
       expect(BqStream::QueuedItem.all).to be_empty
+    end
+
+    it 'should create the bigquery dataset' do
+      expect(BqStream.bq_writer.bq_datasets)
+        .to eq([[['dataset']]])
     end
 
     it 'should return an existing bq table and not create a new table' do
