@@ -9,7 +9,9 @@ module BqStream
   define_setting :project_id
   define_setting :dataset
   define_setting :queued_items_table_name, 'queued_items'
+  define_setting :oldest_record_table_name, 'oldest_records'
   define_setting :bq_table_name, 'bq_datastream'
+  define_setting :back_date, nil
 
   def self.create_bq_writer
     opts = {}
@@ -23,9 +25,24 @@ module BqStream
 
   def self.config_initialized
     QueuedItem.build_table
+    OldestRecord.build_table
     create_bq_writer
     create_bq_dataset unless @bq_writer.datasets_formatted.include?(dataset)
     create_bq_table unless @bq_writer.tables_formatted.include?(bq_table_name)
+    copy_old_records
+  end
+
+  def self.copy_old_records
+    old_records = @bq_writer.query('SELECT table_name, attr, min(updated_at) '\
+                                   'as bq_earliest_update FROM '\
+                                   "[#{ENV['PROJECT_ID']}:#{ENV['DATASET']}."\
+                                   "#{bq_table_name}] GROUP BY table_name, "\
+                                   'attr')
+    old_records['rows'].each do |r|
+      OldestRecord.create(table_name: r['f'][0]['v'],
+                          attr: r['f'][1]['v'],
+                          bq_earliest_update: Time.at(r['f'][2]['v'].to_f))
+    end
   end
 
   def self.dequeue_items
