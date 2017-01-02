@@ -1,12 +1,79 @@
 require 'spec_helper'
 
 describe BqStream do
-  before do
-    Timecop.freeze(Time.parse('2017-01-01 00:00:00 UTC'))
-  end
+  # before do
+  #   Timecop.freeze(Time.parse('2017-01-01 00:00:00 UTC'))
+  # end
+  #
+  # after do
+  #   Timecop.return
+  # end
 
-  after do
-    Timecop.return
+  before(:all) do
+    class TableFirst < ActiveRecord::Base
+      def self.build_table
+        connection.create_table :table_firsts, force: true do |t|
+          t.string :name
+          t.text :description
+          t.boolean :required
+          t.timestamps
+        end
+      end
+    end
+
+    class TableSecond < ActiveRecord::Base
+      def self.build_table
+        connection.create_table :table_seconds, force: true do |t|
+          t.string :name
+          t.string :status
+          t.integer :rank
+          t.timestamps
+        end
+      end
+    end
+
+    class TableThird < ActiveRecord::Base
+      def self.build_table
+        connection.create_table :table_thirds, force: true do |t|
+          t.string :name
+          t.string :notes
+          t.integer :order
+          t.timestamps
+        end
+      end
+    end
+
+    class TableForth < ActiveRecord::Base
+      def self.build_table
+        connection.create_table :table_forths, force: true do |t|
+          t.string :name
+          t.string :listing
+          t.integer :level
+          t.timestamps
+        end
+      end
+    end
+
+    TableFirst.build_table
+    TableSecond.build_table
+    TableThird.build_table
+    TableForth.build_table
+
+    Timecop.freeze(Time.parse('2016-02-26 00:00:00 UTC'))
+
+    @oldest_record =
+      TableFirst.create(name: 'oldest record',
+                        description: 'the oldest record',
+                        required: false)
+
+    Timecop.freeze(Time.parse('2016-09-21 00:00:00 UTC'))
+
+    @old_record =
+      TableFirst.create(name: 'old record',
+                        description: 'an older record',
+                        required: false)
+
+    Timecop.freeze(Time.parse('2017-01-01 00:00:00 UTC'))
   end
 
   before(:each) do
@@ -148,58 +215,17 @@ describe BqStream do
   context 'should be able to queue and dequeue items from tables' do
     before(:all) do
       class TableFirst < ActiveRecord::Base
-        def self.build_table
-          connection.create_table :table_firsts, force: true do |t|
-            t.string :name
-            t.text :description
-            t.boolean :required
-            t.timestamps
-          end
-          bq_attributes :all
-        end
+        bq_attributes :all
       end
 
       class TableSecond < ActiveRecord::Base
-        def self.build_table
-          connection.create_table :table_seconds, force: true do |t|
-            t.string :name
-            t.string :status
-            t.integer :rank
-            t.timestamps
-          end
-          bq_attributes(only: [:name, :status])
-        end
+        bq_attributes(only: [:name, :status])
       end
 
       class TableThird < ActiveRecord::Base
-        def self.build_table
-          connection.create_table :table_thirds, force: true do |t|
-            t.string :name
-            t.string :notes
-            t.integer :order
-            t.timestamps
-          end
-          bq_attributes(except: [:id, :order, :created_at])
-        end
+        bq_attributes(except: [:id, :order, :created_at])
       end
-
-      class TableForth < ActiveRecord::Base
-        def self.build_table
-          connection.create_table :table_forths, force: true do |t|
-            t.string :name
-            t.string :listing
-            t.integer :level
-            t.timestamps
-          end
-        end
-      end
-
-      TableFirst.build_table
-      TableSecond.build_table
-      TableThird.build_table
-      TableForth.build_table
     end
-
     before(:each) do
       @first_record =
         TableFirst.create(name: 'primary record',
@@ -232,7 +258,7 @@ describe BqStream do
                  'record_id' => @first_record.id,
                  'attr' => 'name',
                  'new_value' => 'primary record',
-                 'updated_at' => @time_stamp
+                 'updated_at' => @time_stamp.getutc
                },
                 {
                   'id' => 2,
@@ -240,7 +266,7 @@ describe BqStream do
                   'record_id' => @first_record.id,
                   'attr' => 'description',
                   'new_value' => 'first into the table',
-                  'updated_at' => @time_stamp
+                  'updated_at' => @time_stamp.getutc
                 },
                 {
                   'id' => 3,
@@ -248,7 +274,7 @@ describe BqStream do
                   'record_id' => @first_record.id,
                   'attr' => 'required',
                   'new_value' => 'true',
-                  'updated_at' => @time_stamp
+                  'updated_at' => @time_stamp.getutc
                 },
                 {
                   'id' => 4,
@@ -256,7 +282,7 @@ describe BqStream do
                   'record_id' => @first_record.id,
                   'attr' => 'created_at',
                   'new_value' => '2017-01-01 00:00:00 UTC',
-                  'updated_at' => @time_stamp
+                  'updated_at' => @time_stamp.getutc
                 },
                 {
                   'id' => 5,
@@ -264,15 +290,15 @@ describe BqStream do
                   'record_id' => @first_record.id,
                   'attr' => 'updated_at',
                   'new_value' => '2017-01-01 00:00:00 UTC',
-                  'updated_at' => @time_stamp
+                  'updated_at' => @time_stamp.getutc
                 },
                 {
                   'id' => 6,
                   'table_name' => 'TableFirst',
                   'record_id' => @first_record.id,
                   'attr' => 'id',
-                  'new_value' => '1',
-                  'updated_at' => @time_stamp
+                  'new_value' => '3',
+                  'updated_at' => @time_stamp.getutc
                 },
                 {
                   'id' => 7,
@@ -280,7 +306,7 @@ describe BqStream do
                   'record_id' => @second_record.id,
                   'attr' => 'name',
                   'new_value' => 'secondary record',
-                  'updated_at' => @time_stamp
+                  'updated_at' => @time_stamp.getutc
                 },
                 {
                   'id' => 8,
@@ -288,7 +314,7 @@ describe BqStream do
                   'record_id' => @second_record.id,
                   'attr' => 'status',
                   'new_value' => 'active',
-                  'updated_at' => @time_stamp
+                  'updated_at' => @time_stamp.getutc
                 },
                 {
                   'id' => 9,
@@ -296,7 +322,7 @@ describe BqStream do
                   'record_id' => @third_record.id,
                   'attr' => 'name',
                   'new_value' => 'third record',
-                  'updated_at' => @time_stamp
+                  'updated_at' => @time_stamp.getutc
                 },
                 {
                   'id' => 10,
@@ -304,7 +330,7 @@ describe BqStream do
                   'record_id' => @third_record.id,
                   'attr' => 'notes',
                   'new_value' => 'remember',
-                  'updated_at' => @time_stamp
+                  'updated_at' => @time_stamp.getutc
                 },
                 {
                   'id' => 11,
@@ -312,7 +338,7 @@ describe BqStream do
                   'record_id' => @third_record.id,
                   'attr' => 'updated_at',
                   'new_value' => '2017-01-01 00:00:00 UTC',
-                  'updated_at' => @time_stamp
+                  'updated_at' => @time_stamp.getutc
                 },
                 {
                   'id' => 12,
@@ -320,7 +346,7 @@ describe BqStream do
                   'record_id' => @first_record.id,
                   'attr' => 'required',
                   'new_value' => 'false',
-                  'updated_at' => @time_stamp
+                  'updated_at' => @time_stamp.getutc
                 },
                 {
                   'id' => 13,
@@ -328,7 +354,7 @@ describe BqStream do
                   'record_id' => @second_record.id,
                   'attr' => nil,
                   'new_value' => nil,
-                  'updated_at' => @time_stamp
+                  'updated_at' => @time_stamp.getutc
                 }])
     end
 
