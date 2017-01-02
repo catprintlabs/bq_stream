@@ -12,6 +12,7 @@ module BqStream
   define_setting :oldest_record_table_name, 'oldest_records'
   define_setting :bq_table_name, 'bq_datastream'
   define_setting :back_date, nil
+  define_setting :batch_size, 1000
 
   def self.create_bq_writer
     opts = {}
@@ -29,7 +30,7 @@ module BqStream
     create_bq_writer
     create_bq_dataset unless @bq_writer.datasets_formatted.include?(dataset)
     create_bq_table unless @bq_writer.tables_formatted.include?(bq_table_name)
-    copy_old_records
+    copy_old_records if back_date
   end
 
   def self.copy_old_records
@@ -47,6 +48,13 @@ module BqStream
 
   def self.dequeue_items
     create_bq_writer
+    OldestRecord.update_ar_earliest do |oldest_record, r|
+      @bq_writer.insert(bq_table_name, table_name: oldest_record.model.name,
+                                       record_id: r.id,
+                                       attr: oldest_record.attribute,
+                                       new_value: r[oldest_record.attribute],
+                                       updated_at: r.updated_at)
+    end
     BqStream::QueuedItem.all.each do |i|
       @bq_writer.insert(bq_table_name, table_name: i.table_name,
                                        record_id: i.record_id, attr: i.attr,
