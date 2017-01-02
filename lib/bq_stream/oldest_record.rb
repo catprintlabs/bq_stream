@@ -11,7 +11,6 @@ module BqStream
     end
 
     def table_class
-      binding.pry
       @table_class ||= table_name.constantize
     end
 
