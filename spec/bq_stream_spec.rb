@@ -21,7 +21,7 @@ describe BqStream do
       end
 
       def insert(*args)
-        args[1][:updated_at] = Time.parse('2017-01-01 00:00:00 +0000')
+        args[1][:updated_at] = Time.now
         inserted_records << [args]
       end
 
@@ -40,6 +40,48 @@ describe BqStream do
       def tables_formatted
         []
       end
+
+      def query(_q)
+        { 'kind' => 'bigquery#queryResponse',
+          'schema' => { 'fields' =>
+            [{ 'name' => 'table_name', 'type' => 'STRING',
+               'mode' => 'NULLABLE' },
+             { 'name' => 'attr', 'type' => 'STRING', 'mode' => 'NULLABLE' },
+             { 'name' => 'bq_earliest_update',
+               'type' => 'TIMESTAMP', 'mode' => 'NULLABLE' }] },
+          'jobReference' =>
+              { 'projectId' => 'project_id',
+                'jobId' => 'job_id' },
+          'totalRows' => '12',
+          'rows' =>
+          [{ 'f' => [{ 'v' => 'TableThird' }, { 'v' => 'notes' },
+                     { 'v' => '1483228800.0' }] },
+           { 'f' => [{ 'v' => 'TableFirst' }, { 'v' => 'name' },
+                     { 'v' => '1483228800.0' }] },
+           { 'f' => [{ 'v' => 'TableFirst' }, { 'v' => 'created_at' },
+                     { 'v' => '1483228800.0' }] },
+           { 'f' => [{ 'v' => 'TableSecond' }, { 'v' => 'name' },
+                     { 'v' => '1483228800.0' }] },
+           { 'f' => [{ 'v' => 'TableFirst' }, { 'v' => 'description' },
+                     { 'v' => '1483228800.0' }] },
+           { 'f' => [{ 'v' => 'TableThird' }, { 'v' => 'updated_at' },
+                     { 'v' => '1483228800.0' }] },
+           { 'f' => [{ 'v' => 'TableThird' }, { 'v' => 'name' },
+                     { 'v' => '1483228800.0' }] },
+           { 'f' => [{ 'v' => 'TableFirst' }, { 'v' => 'id' },
+                     { 'v' => '1483228800.0' }] },
+           { 'f' => [{ 'v' => 'TableFirst' }, { 'v' => 'required' },
+                     { 'v' => '1483228800.0' }] },
+           { 'f' => [{ 'v' => 'TableSecond' }, { 'v' => 'status' },
+                     { 'v' => '1483228800.0' }] },
+           { 'f' => [{ 'v' => 'TableSecond' }, { 'v' => nil },
+                     { 'v' => '1483228800.0' }] },
+           { 'f' => [{ 'v' => 'TableFirst' }, { 'v' => 'updated_at' },
+                     { 'v' => '1483228800.0' }] }],
+          'totalBytesProcessed' => '0',
+          'jobComplete' => true,
+          'cacheHit' => true }
+      end
     end
     BqStream.class_eval do
       class << self
@@ -53,7 +95,7 @@ describe BqStream do
       config.project_id = 'project_id'
       config.dataset = 'dataset'
     end
-    @time_stamp = Time.parse('2017-01-01 00:00:00 +0000')
+    @time_stamp = Time.now
   end
 
   it 'has a version number' do
@@ -69,6 +111,7 @@ describe BqStream do
       expect(BqStream.dataset).to_not eq('production')
       expect(BqStream.queued_items_table_name).to eq('queued_items')
       expect(BqStream.bq_table_name).to eq('bq_datastream')
+      expect(BqStream.back_date).to be_nil
       expect(BqStream::QueuedItem.all).to be_empty
     end
 
@@ -102,7 +145,7 @@ describe BqStream do
     end
   end
 
-  context 'should be able to queue and dequeue items from table' do
+  context 'should be able to queue and dequeue items from tables' do
     before(:all) do
       class TableFirst < ActiveRecord::Base
         def self.build_table
@@ -287,6 +330,59 @@ describe BqStream do
                   'new_value' => nil,
                   'updated_at' => @time_stamp
                 }])
+    end
+
+    it 'should write bigquery items to oldest record table if present' do
+      BqStream.back_date = @timestamp
+      expect(BqStream::OldestRecord.all.as_json)
+        .to eq([{ 'id' => 1,
+                  'table_name' => 'TableThird',
+                  'attr' => 'notes',
+                  'bq_earliest_update' => @time_stamp.getutc},
+                { 'id' => 2,
+                  'table_name' => 'TableFirst',
+                  'attr' => 'name',
+                  'bq_earliest_update' => @time_stamp.getutc},
+                { 'id' => 3,
+                  'table_name' => 'TableFirst',
+                  'attr' => 'created_at',
+                  'bq_earliest_update' => @time_stamp.getutc},
+                { 'id' => 4,
+                  'table_name' => 'TableSecond',
+                  'attr' => 'name',
+                  'bq_earliest_update' => @time_stamp.getutc},
+                { 'id' => 5,
+                  'table_name' => 'TableFirst',
+                  'attr' => 'description',
+                  'bq_earliest_update' => @time_stamp.getutc},
+                { 'id' => 6,
+                  'table_name' => 'TableThird',
+                  'attr' => 'updated_at',
+                  'bq_earliest_update' => @time_stamp.getutc},
+                { 'id' => 7,
+                  'table_name' => 'TableThird',
+                  'attr' => 'name',
+                  'bq_earliest_update' => @time_stamp.getutc},
+                { 'id' => 8,
+                  'table_name' => 'TableFirst',
+                  'attr' => 'id',
+                  'bq_earliest_update' => @time_stamp.getutc},
+                { 'id' => 9,
+                  'table_name' => 'TableFirst',
+                  'attr' => 'required',
+                  'bq_earliest_update' => @time_stamp.getutc},
+                { 'id' => 10,
+                  'table_name' => 'TableSecond',
+                  'attr' => 'status',
+                  'bq_earliest_update' => @time_stamp.getutc},
+                { 'id' => 11,
+                  'table_name' => 'TableSecond',
+                  'attr' => nil,
+                  'bq_earliest_update' => @time_stamp.getutc},
+                { 'id' => 12,
+                  'table_name' => 'TableFirst',
+                  'attr' => 'updated_at',
+                  'bq_earliest_update' => @time_stamp.getutc}])
     end
 
     it 'should send queueded items to bigquery then delete them' do
