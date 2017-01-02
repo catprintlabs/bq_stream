@@ -30,10 +30,10 @@ module BqStream
     create_bq_writer
     create_bq_dataset unless @bq_writer.datasets_formatted.include?(dataset)
     create_bq_table unless @bq_writer.tables_formatted.include?(bq_table_name)
-    copy_old_records if back_date
+    initialize_old_records
   end
 
-  def self.copy_old_records
+  def self.initialize_old_records
     old_records = @bq_writer.query('SELECT table_name, attr, min(updated_at) '\
                                    'as bq_earliest_update FROM '\
                                    "[#{ENV['PROJECT_ID']}:#{ENV['DATASET']}."\
