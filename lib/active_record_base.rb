@@ -14,6 +14,9 @@ class ActiveRecord::Base
       raise 'You must declare an opts hash with a key of :all, :only '\
         'or :except) and a value as an array, if using :only or :except.'
     end
+    bq_atr_of_interest.each do |attribute|
+      OldestRecord.find_or_create_by(table_name: name, attr: attribute)
+    end if BqStream.back_date
     after_save { queue_item(bq_atr_of_interest) }
     after_destroy do
       BqStream::QueuedItem.create(table_name: self.class.to_s, record_id: id)
