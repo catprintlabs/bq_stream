@@ -142,11 +142,13 @@ describe BqStream do
           'cacheHit' => true }
       end
     end
+
     BqStream.class_eval do
       class << self
         attr_reader :bq_writer
       end
     end
+
     BqStream.configuration do |config|
       config.client_id = 'client_id'
       config.service_email = 'service_email'
@@ -351,59 +353,6 @@ describe BqStream do
                 }])
     end
 
-    it 'should write bigquery items to oldest record table if present' do
-      BqStream.back_date = @timestamp
-      expect(BqStream::OldestRecord.all.as_json)
-        .to eq([{ 'id' => 1,
-                  'table_name' => 'TableThird',
-                  'attr' => 'notes',
-                  'bq_earliest_update' => @time_stamp.getutc },
-                { 'id' => 2,
-                  'table_name' => 'TableFirst',
-                  'attr' => 'name',
-                  'bq_earliest_update' => @time_stamp.getutc },
-                { 'id' => 3,
-                  'table_name' => 'TableFirst',
-                  'attr' => 'created_at',
-                  'bq_earliest_update' => @time_stamp.getutc },
-                { 'id' => 4,
-                  'table_name' => 'TableSecond',
-                  'attr' => 'name',
-                  'bq_earliest_update' => @time_stamp.getutc },
-                { 'id' => 5,
-                  'table_name' => 'TableFirst',
-                  'attr' => 'description',
-                  'bq_earliest_update' => @time_stamp.getutc },
-                { 'id' => 6,
-                  'table_name' => 'TableThird',
-                  'attr' => 'updated_at',
-                  'bq_earliest_update' => @time_stamp.getutc },
-                { 'id' => 7,
-                  'table_name' => 'TableThird',
-                  'attr' => 'name',
-                  'bq_earliest_update' => @time_stamp.getutc },
-                { 'id' => 8,
-                  'table_name' => 'TableFirst',
-                  'attr' => 'id',
-                  'bq_earliest_update' => @time_stamp.getutc },
-                { 'id' => 9,
-                  'table_name' => 'TableFirst',
-                  'attr' => 'required',
-                  'bq_earliest_update' => @time_stamp.getutc },
-                { 'id' => 10,
-                  'table_name' => 'TableSecond',
-                  'attr' => 'status',
-                  'bq_earliest_update' => @time_stamp.getutc },
-                { 'id' => 11,
-                  'table_name' => 'TableSecond',
-                  'attr' => nil,
-                  'bq_earliest_update' => @time_stamp.getutc },
-                { 'id' => 12,
-                  'table_name' => 'TableFirst',
-                  'attr' => 'updated_at',
-                  'bq_earliest_update' => @time_stamp.getutc }])
-    end
-
     it 'should send queueded items to bigquery and then delete them' do
       BqStream.dequeue_items
       expect(BqStream::QueuedItem.all).to be_empty
@@ -516,73 +465,75 @@ describe BqStream do
                     updated_at: @time_stamp }]]])
     end
 
-    it 'initializes oldest records' do
-      expect(BqStream::OldestRecord.all.as_json)
-        .to eq([{ 'id' => 1,
-                  'table_name' => 'TableThird',
-                  'attr' => 'notes',
-                  'bq_earliest_update' => @time_stamp },
-                { 'id' => 2,
-                  'table_name' => 'TableFirst',
-                  'attr' => 'name',
-                  'bq_earliest_update' => @time_stamp },
-                { 'id' => 3,
-                  'table_name' => 'TableFirst',
-                  'attr' => 'created_at',
-                  'bq_earliest_update' => @time_stamp },
-                { 'id' => 4,
-                  'table_name' => 'TableSecond',
-                  'attr' => 'name',
-                  'bq_earliest_update' => @time_stamp },
-                { 'id' => 5,
-                  'table_name' => 'TableFirst',
-                  'attr' => 'description',
-                  'bq_earliest_update' => @time_stamp },
-                { 'id' => 6,
-                  'table_name' => 'TableThird',
-                  'attr' => 'updated_at',
-                  'bq_earliest_update' => @time_stamp },
-                { 'id' => 7,
-                  'table_name' => 'TableThird',
-                  'attr' => 'name',
-                  'bq_earliest_update' => @time_stamp },
-                { 'id' => 8,
-                  'table_name' => 'TableFirst',
-                  'attr' => 'id',
-                  'bq_earliest_update' => @time_stamp },
-                { 'id' => 9,
-                  'table_name' => 'TableFirst',
-                  'attr' => 'required',
-                  'bq_earliest_update' => @time_stamp },
-                { 'id' => 10,
-                  'table_name' => 'TableSecond',
-                  'attr' => 'status',
-                  'bq_earliest_update' => @time_stamp },
-                { 'id' => 11,
-                  'table_name' => 'TableSecond',
-                  'attr' => nil,
-                  'bq_earliest_update' => @time_stamp },
-                { 'id' => 12,
-                  'table_name' => 'TableFirst',
-                  'attr' => 'updated_at',
-                  'bq_earliest_update' => @time_stamp }])
-    end
+    context 'oldest record table' do
+      it 'should write bigquery items to oldest record table' do
+        expect(BqStream::OldestRecord.all.as_json)
+          .to eq([{ 'id' => 1,
+                    'table_name' => 'TableThird',
+                    'attr' => 'notes',
+                    'bq_earliest_update' => @time_stamp },
+                  { 'id' => 2,
+                    'table_name' => 'TableFirst',
+                    'attr' => 'name',
+                    'bq_earliest_update' => @time_stamp },
+                  { 'id' => 3,
+                    'table_name' => 'TableFirst',
+                    'attr' => 'created_at',
+                    'bq_earliest_update' => @time_stamp },
+                  { 'id' => 4,
+                    'table_name' => 'TableSecond',
+                    'attr' => 'name',
+                    'bq_earliest_update' => @time_stamp },
+                  { 'id' => 5,
+                    'table_name' => 'TableFirst',
+                    'attr' => 'description',
+                    'bq_earliest_update' => @time_stamp },
+                  { 'id' => 6,
+                    'table_name' => 'TableThird',
+                    'attr' => 'updated_at',
+                    'bq_earliest_update' => @time_stamp },
+                  { 'id' => 7,
+                    'table_name' => 'TableThird',
+                    'attr' => 'name',
+                    'bq_earliest_update' => @time_stamp },
+                  { 'id' => 8,
+                    'table_name' => 'TableFirst',
+                    'attr' => 'id',
+                    'bq_earliest_update' => @time_stamp },
+                  { 'id' => 9,
+                    'table_name' => 'TableFirst',
+                    'attr' => 'required',
+                    'bq_earliest_update' => @time_stamp },
+                  { 'id' => 10,
+                    'table_name' => 'TableSecond',
+                    'attr' => 'status',
+                    'bq_earliest_update' => @time_stamp },
+                  { 'id' => 11,
+                    'table_name' => 'TableSecond',
+                    'attr' => nil,
+                    'bq_earliest_update' => @time_stamp },
+                  { 'id' => 12,
+                    'table_name' => 'TableFirst',
+                    'attr' => 'updated_at',
+                    'bq_earliest_update' => @time_stamp }])
+      end
 
-    it 'should update oldest records' do
-      BqStream.dequeue_items
-      expect(BqStream::OldestRecord.all.as_json)
-        .to eq([{ 'id' => 1,
-                  'table_name' => 'TableThird',
-                  'attr' => 'notes',
-                  'bq_earliest_update' => '2016-09-21 00:00:00 UTC' },
-                { 'id' => 6,
-                  'table_name' => 'TableThird',
-                  'attr' => 'updated_at',
-                  'bq_earliest_update' => '2016-09-21 00:00:00 UTC' },
-                { 'id' => 7,
-                  'table_name' => 'TableThird',
-                  'attr' => 'name',
-                  'bq_earliest_update' => '2016-09-21 00:00:00 UTC' }])
+      it 'should update oldest records' do
+        BqStream.dequeue_items
+        expect(BqStream::OldestRecord.all.as_json)
+          .to eq([{ 'id' => 1,
+                    'table_name' => 'TableThird',
+                    'attr' => 'notes',
+                    'bq_earliest_update' => '2016-09-21 00:00:00 UTC' },
+                  { 'id' => 6,
+                    'table_name' => 'TableThird',
+                    'attr' => 'updated_at',
+                    'bq_earliest_update' => '2016-09-21 00:00:00 UTC' },
+                  { 'id' => 7,
+                    'table_name' => 'TableThird',
+                    'attr' => 'name',
+                    'bq_earliest_update' => '2016-09-21 00:00:00 UTC' }])
+      end
     end
   end
 end
