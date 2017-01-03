@@ -175,6 +175,7 @@ describe BqStream do
       expect(BqStream.bq_table_name).to eq('bq_datastream')
       expect(BqStream.back_date).to eq('2016-09-21 00:00:00.000000000 +0000')
       expect(BqStream::QueuedItem.all).to be_empty
+      expect(BqStream::OldestRecord.all).not_to be_empty
     end
 
     it 'should create the bigquery dataset' do
