@@ -1,14 +1,6 @@
 require 'spec_helper'
 
 describe BqStream do
-  # before do
-  #   Timecop.freeze(Time.parse('2017-01-01 00:00:00 UTC'))
-  # end
-  #
-  # after do
-  #   Timecop.return
-  # end
-
   before(:all) do
     class TableFirst < ActiveRecord::Base
       def self.build_table
@@ -62,16 +54,16 @@ describe BqStream do
     Timecop.freeze(Time.parse('2016-02-26 00:00:00 UTC'))
 
     @oldest_record =
-      TableFirst.create(name: 'oldest record',
-                        description: 'the oldest record',
-                        required: false)
+      TableThird.create(name: 'oldest record',
+                        notes: 'the oldest record',
+                        order: 1)
 
     Timecop.freeze(Time.parse('2016-09-21 00:00:00 UTC'))
 
     @old_record =
-      TableFirst.create(name: 'old record',
-                        description: 'an older record',
-                        required: false)
+      TableThird.create(name: 'old record',
+                        notes: 'an old record',
+                        order: 2)
 
     Timecop.freeze(Time.parse('2017-01-01 00:00:00 UTC'))
   end
@@ -161,6 +153,7 @@ describe BqStream do
       config.key = 'key'
       config.project_id = 'project_id'
       config.dataset = 'dataset'
+      config.back_date = Time.parse('2016-09-21 00:00:00 UTC')
     end
     @time_stamp = Time.now
   end
@@ -178,7 +171,7 @@ describe BqStream do
       expect(BqStream.dataset).to_not eq('production')
       expect(BqStream.queued_items_table_name).to eq('queued_items')
       expect(BqStream.bq_table_name).to eq('bq_datastream')
-      expect(BqStream.back_date).to be_nil
+      expect(BqStream.back_date).to eq('2016-09-21 00:00:00.000000000 +0000')
       expect(BqStream::QueuedItem.all).to be_empty
     end
 
@@ -297,7 +290,7 @@ describe BqStream do
                   'table_name' => 'TableFirst',
                   'record_id' => @first_record.id,
                   'attr' => 'id',
-                  'new_value' => '3',
+                  'new_value' => '1',
                   'updated_at' => @time_stamp.getutc
                 },
                 {
@@ -411,7 +404,7 @@ describe BqStream do
                   'bq_earliest_update' => @time_stamp.getutc }])
     end
 
-    it 'should send queueded items to bigquery then delete them' do
+    it 'should send queueded items to bigquery and then delete them' do
       BqStream.dequeue_items
       expect(BqStream::QueuedItem.all).to be_empty
       expect(BqStream.bq_writer.initial_args)
@@ -426,6 +419,24 @@ describe BqStream do
                ])
       expect(BqStream.bq_writer.inserted_records)
         .to eq([[['bq_datastream',
+                  { table_name: 'TableThird',
+                    record_id: @old_record.id,
+                    attr: 'notes',
+                    new_value: 'an old record',
+                    updated_at: @time_stamp }]],
+                [['bq_datastream',
+                  { table_name: 'TableThird',
+                    record_id: @old_record.id,
+                    attr: 'updated_at',
+                    new_value: '2016-09-21 00:00:00.000000000 +0000',
+                    updated_at: @time_stamp }]],
+                [['bq_datastream',
+                  { table_name: 'TableThird',
+                    record_id: @old_record.id,
+                    attr: 'name',
+                    new_value: 'old record',
+                    updated_at: @time_stamp }]],
+                [['bq_datastream',
                   { table_name: 'TableFirst',
                     record_id: @first_record.id,
                     attr: 'name',
@@ -503,6 +514,75 @@ describe BqStream do
                     attr: nil,
                     new_value: nil,
                     updated_at: @time_stamp }]]])
+    end
+
+    it 'initializes oldest records' do
+      expect(BqStream::OldestRecord.all.as_json)
+        .to eq([{ 'id' => 1,
+                  'table_name' => 'TableThird',
+                  'attr' => 'notes',
+                  'bq_earliest_update' => @time_stamp },
+                { 'id' => 2,
+                  'table_name' => 'TableFirst',
+                  'attr' => 'name',
+                  'bq_earliest_update' => @time_stamp },
+                { 'id' => 3,
+                  'table_name' => 'TableFirst',
+                  'attr' => 'created_at',
+                  'bq_earliest_update' => @time_stamp },
+                { 'id' => 4,
+                  'table_name' => 'TableSecond',
+                  'attr' => 'name',
+                  'bq_earliest_update' => @time_stamp },
+                { 'id' => 5,
+                  'table_name' => 'TableFirst',
+                  'attr' => 'description',
+                  'bq_earliest_update' => @time_stamp },
+                { 'id' => 6,
+                  'table_name' => 'TableThird',
+                  'attr' => 'updated_at',
+                  'bq_earliest_update' => @time_stamp },
+                { 'id' => 7,
+                  'table_name' => 'TableThird',
+                  'attr' => 'name',
+                  'bq_earliest_update' => @time_stamp },
+                { 'id' => 8,
+                  'table_name' => 'TableFirst',
+                  'attr' => 'id',
+                  'bq_earliest_update' => @time_stamp },
+                { 'id' => 9,
+                  'table_name' => 'TableFirst',
+                  'attr' => 'required',
+                  'bq_earliest_update' => @time_stamp },
+                { 'id' => 10,
+                  'table_name' => 'TableSecond',
+                  'attr' => 'status',
+                  'bq_earliest_update' => @time_stamp },
+                { 'id' => 11,
+                  'table_name' => 'TableSecond',
+                  'attr' => nil,
+                  'bq_earliest_update' => @time_stamp },
+                { 'id' => 12,
+                  'table_name' => 'TableFirst',
+                  'attr' => 'updated_at',
+                  'bq_earliest_update' => @time_stamp }])
+    end
+
+    it 'should update oldest records' do
+      BqStream.dequeue_items
+      expect(BqStream::OldestRecord.all.as_json)
+        .to eq([{ 'id' => 1,
+                  'table_name' => 'TableThird',
+                  'attr' => 'notes',
+                  'bq_earliest_update' => '2016-09-21 00:00:00 UTC' },
+                { 'id' => 6,
+                  'table_name' => 'TableThird',
+                  'attr' => 'updated_at',
+                  'bq_earliest_update' => '2016-09-21 00:00:00 UTC' },
+                { 'id' => 7,
+                  'table_name' => 'TableThird',
+                  'attr' => 'name',
+                  'bq_earliest_update' => '2016-09-21 00:00:00 UTC' }])
     end
   end
 end
