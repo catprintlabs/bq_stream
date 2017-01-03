@@ -1,13 +1,13 @@
 module BqStream
   class OldestRecord < ActiveRecord::Base
-    def self.update_ar_earliest(&block)
+    def self.update_bq_earliest(&block)
       OldestRecord.all.each { |old_rec| old_rec.update_oldest_records(&block) }
     end
 
     def update_oldest_records
       destroy && return if older_records.empty?
       older_records.each { |r| yield self, r }
-      update(bq_earliest_update: ar_records.first.updated_at)
+      update(bq_earliest_update: older_records.first.updated_at)
     end
 
     def table_class

@@ -48,11 +48,11 @@ module BqStream
 
   def self.dequeue_items
     create_bq_writer
-    OldestRecord.update_ar_earliest do |oldest_record, r|
-      @bq_writer.insert(bq_table_name, table_name: oldest_record.model.name,
+    OldestRecord.update_bq_earliest do |oldest_record, r|
+      @bq_writer.insert(bq_table_name, table_name: oldest_record.table_name,
                                        record_id: r.id,
-                                       attr: oldest_record.attribute,
-                                       new_value: r[oldest_record.attribute],
+                                       attr: oldest_record.attr,
+                                       new_value: r[oldest_record.attr],
                                        updated_at: r.updated_at)
     end
     BqStream::QueuedItem.all.each do |i|
