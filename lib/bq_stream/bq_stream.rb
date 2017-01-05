@@ -43,7 +43,7 @@ module BqStream
       OldestRecord.create(table_name: r['f'][0]['v'],
                           attr: r['f'][1]['v'],
                           bq_earliest_update: Time.at(r['f'][2]['v'].to_f))
-    end
+    end if old_records['rows']
   end
 
   def self.dequeue_items
