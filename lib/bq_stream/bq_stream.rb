@@ -14,6 +14,11 @@ module BqStream
   define_setting :back_date, nil
   define_setting :batch_size, 1000
 
+  def self.log
+    @log ||= Logger.new(Rails.root.join('log/bq_stream.log').to_s,
+                        File::WRONLY | File::APPEND)
+  end
+
   def self.create_bq_writer
     opts = {}
     opts['client_id']     = client_id
@@ -47,6 +52,8 @@ module BqStream
   end
 
   def self.dequeue_items
+    operation = (0...10).map { ('a'..'z').to_a[rand(26)] }.join
+    log.info "#{Time.now}: [dequeue_items #{operation}] Starting..."
     create_bq_writer
     OldestRecord.update_bq_earliest do |oldest_record, r|
       @bq_writer.insert(bq_table_name, table_name: oldest_record.table_name,
@@ -62,6 +69,7 @@ module BqStream
                                        updated_at: Time.now)
       BqStream::QueuedItem.destroy(i.id)
     end
+    log.info "#{Time.now}: [dequeue_items #{operation}] Completed."
   end
 
   def self.create_bq_dataset
