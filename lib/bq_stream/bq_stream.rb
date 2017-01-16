@@ -55,13 +55,13 @@ module BqStream
     operation = (0...10).map { ('a'..'z').to_a[rand(26)] }.join
     log.info "#{Time.now}: [dequeue_items #{operation}] Starting..."
     create_bq_writer
-    OldestRecord.update_bq_earliest do |oldest_record, r|
-      @bq_writer.insert(bq_table_name, table_name: oldest_record.table_name,
-                                       record_id: r.id,
-                                       attr: oldest_record.attr,
-                                       new_value: r[oldest_record.attr],
-                                       updated_at: r.updated_at)
-    end
+    # OldestRecord.update_bq_earliest do |oldest_record, r|
+    #   @bq_writer.insert(bq_table_name, table_name: oldest_record.table_name,
+    #                                    record_id: r.id,
+    #                                    attr: oldest_record.attr,
+    #                                    new_value: r[oldest_record.attr],
+    #                                    updated_at: r.updated_at)
+    # end
     BqStream::QueuedItem.all.limit(BqStream.batch_size).each do |i|
       @bq_writer.insert(bq_table_name, table_name: i.table_name,
                                        record_id: i.record_id, attr: i.attr,
