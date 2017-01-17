@@ -62,9 +62,9 @@ module BqStream
     #                                    new_value: r[oldest_record.attr],
     #                                    updated_at: r.updated_at)
     # end
-    BqStream::QueuedItem.all.limit(BqStream.batch_size).each do |i|
+    BqStream::QueuedItem.all.each do |i| # .limit(BqStream.batch_size).each do |i|
       nv = i.new_value
-           .encode('utf-8', invalid: :replace, undef: :replace, replace: '_')
+            .encode('utf-8', invalid: :replace, undef: :replace, replace: '_')
       @bq_writer.insert(bq_table_name, table_name: i.table_name,
                                        record_id: i.record_id, attr: i.attr,
                                        new_value: nv,
