@@ -13,7 +13,7 @@ module BqStream
   define_setting :bq_table_name, 'bq_datastream'
   define_setting :back_date, nil
   define_setting :batch_size, 1000
-  define_setting :dequeue_batch, 5000
+  define_setting :dequeue_batch, 1000
 
   def self.log
     @log ||= Logger.new(Rails.root.join('log/bq_stream.log').to_s,
