@@ -52,10 +52,7 @@ module BqStream
     end if old_records['rows']
   end
 
-  def self.dequeue_items
-    operation = (0...10).map { ('a'..'z').to_a[rand(26)] }.join
-    log.info "#{Time.now}: [dequeue_items #{operation}] Starting..."
-    create_bq_writer
+  def self.old_record_updates
     OldestRecord.update_bq_earliest do |oldest_record, r|
       @bq_writer.insert(bq_table_name, table_name: oldest_record.table_name,
                                        record_id: r.id,
@@ -63,6 +60,12 @@ module BqStream
                                        new_value: r[oldest_record.attr],
                                        updated_at: r.updated_at)
     end
+  end
+
+  def self.dequeue_items
+    operation = (0...10).map { ('a'..'z').to_a[rand(26)] }.join
+    log.info "#{Time.now}: [dequeue_items #{operation}] Starting..."
+    create_bq_writer
     BqStream::QueuedItem.all.limit(BqStream.dequeue_batch).each do |i|
       nv = i.new_value.encode('utf-8',
                               invalid: :replace,
