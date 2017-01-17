@@ -13,6 +13,7 @@ module BqStream
   define_setting :bq_table_name, 'bq_datastream'
   define_setting :back_date, nil
   define_setting :batch_size, 1000
+  define_setting :dequeue_batch, 5000
 
   def self.log
     @log ||= Logger.new(Rails.root.join('log/bq_stream.log').to_s,
@@ -62,7 +63,7 @@ module BqStream
                                        new_value: r[oldest_record.attr],
                                        updated_at: r.updated_at)
     end
-    BqStream::QueuedItem.all.limit(BqStream.batch_size).each do |i|
+    BqStream::QueuedItem.all.limit(BqStream.dequeue_batch).each do |i|
       nv = i.new_value.encode('utf-8',
                               invalid: :replace,
                               undef: :replace, replace: '_') rescue nil
