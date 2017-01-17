@@ -63,8 +63,9 @@ module BqStream
     #                                    updated_at: r.updated_at)
     # end
     BqStream::QueuedItem.all.each do |i| # .limit(BqStream.batch_size).each do |i|
-      nv = i.new_value
-            .encode('utf-8', invalid: :replace, undef: :replace, replace: '_')
+      nv = i.new_value.encode('utf-8',
+                              invalid: :replace,
+                              undef: :replace, replace: '_') rescue nil
       @bq_writer.insert(bq_table_name, table_name: i.table_name,
                                        record_id: i.record_id, attr: i.attr,
                                        new_value: nv,
