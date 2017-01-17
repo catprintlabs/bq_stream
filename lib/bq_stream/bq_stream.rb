@@ -65,7 +65,8 @@ module BqStream
     BqStream::QueuedItem.all.limit(BqStream.batch_size).each do |i|
       @bq_writer.insert(bq_table_name, table_name: i.table_name,
                                        record_id: i.record_id, attr: i.attr,
-                                       new_value: i.new_value,
+                                       new_value: i.new_value
+                                                  .gsub(/[^0-9A-Za-z]/, ' '),
                                        updated_at: Time.now)
       BqStream::QueuedItem.destroy(i.id)
     end
