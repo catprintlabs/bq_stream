@@ -18,7 +18,7 @@ module BqStream
       table_class.where(
         'updated_at < ? AND updated_at >= ?',
         bq_earliest_update || Time.now, BqStream.back_date
-      ).order('updated_at DESC').limit(BqStream.batch_size)
+      ).order('updated_at DESC').limit(BqStream.available_rows)
     end
 
     def self.build_table
