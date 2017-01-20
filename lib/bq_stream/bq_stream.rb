@@ -19,6 +19,11 @@ module BqStream
                         File::WRONLY | File::APPEND)
   end
 
+  def self.attr_log
+    @log ||= Logger.new(Rails.root.join('log/bq_stream_attributes.log').to_s,
+                        File::WRONLY | File::APPEND)
+  end
+
   def self.create_bq_writer
     opts = {}
     opts['client_id']     = client_id
