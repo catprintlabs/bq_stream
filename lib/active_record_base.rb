@@ -27,6 +27,9 @@ class ActiveRecord::Base
   end
 
   def queue_item(attributes_of_interest)
+    if self.class.to_s == 'Order'
+      BqStream.attr_log.info "#{Time.now}: [QUEUE ORDER ID] #{changes[:id]}"
+    end
     changes.each do |k, v|
       if attributes_of_interest.include?(k.to_sym)
         if self.class.to_s == 'Order' && k.to_s == 'id'
