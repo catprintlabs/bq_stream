@@ -29,7 +29,7 @@ class ActiveRecord::Base
   def queue_item(attributes_of_interest)
     changes.each do |k, v|
       if attributes_of_interest.include?(k.to_sym)
-        if self.class == 'Order' && k == 'id'
+        if self.class.to_s == 'Order' && k.to_s == 'id'
           BqStream.attr_log.info "#{Time.now}: [Queueing] "\
                    "#{self.class} : #{id} : #{k} : #{v[1]}"
         end
