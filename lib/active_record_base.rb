@@ -1,5 +1,4 @@
 class ActiveRecord::Base
-
   def self.bq_attributes(opts = {})
     unless RUBY_ENGINE == 'opal'
       if opts == :all
@@ -30,8 +29,10 @@ class ActiveRecord::Base
   def queue_item(attributes_of_interest)
     changes.each do |k, v|
       if attributes_of_interest.include?(k.to_sym)
-        BqStream.attr_log.info "#{Time.now}: [Queueing] "\
-                 "#{self.class} : #{id} : #{k} : #{v[1]}"
+        if self.class == 'Order' && k == 'id'
+          BqStream.attr_log.info "#{Time.now}: [Queueing] "\
+                   "#{self.class} : #{id} : #{k} : #{v[1]}"
+        end
         BqStream::QueuedItem.create(table_name: self.class.to_s,
                                     record_id: id, attr: k,
                                     new_value: v[1].to_s)
