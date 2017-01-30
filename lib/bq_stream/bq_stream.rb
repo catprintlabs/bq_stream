@@ -79,10 +79,10 @@ module BqStream
     log.info "#{Time.now}: [dequeue_items #{operation}] Starting..."
     create_bq_writer
     records = BqStream::QueuedItem.all.limit(BqStream.batch_size)
+    binding.pry
     data = records.collect do |i|
       { table_name: i.table_name, record_id: i.record_id, attr: i.attr,
-        updated_at: i.updated_at, new_value:
-          (i.attr == 'params' ? i.new_value : encode_value(i.new_value)) }
+        updated_at: i.updated_at, new_value: i.new_value }
     end
     @bq_writer.insert(bq_table_name, data)
     records.each(&:destroy)
