@@ -80,8 +80,9 @@ module BqStream
     create_bq_writer
     records = BqStream::QueuedItem.all.limit(BqStream.batch_size)
     data = records.collect do |i|
+      new_val = encode_value(i.new_value) rescue nil
       { table_name: i.table_name, record_id: i.record_id, attr: i.attr,
-        updated_at: i.updated_at, new_value: i.new_value }
+        new_value: new_val ? new_val : i.new_value, updated_at: i.updated_at }
     end
     @bq_writer.insert(bq_table_name, data)
     records.each(&:destroy)
