@@ -32,13 +32,13 @@ class ActiveRecord::Base
     #   binding.pry
     #   BqStream.attr_log.info "#{Time.now}: [QUEUE ORDER ID] #{changes[:id]}"
     # end
+    if self.class.to_s == 'Order'
+      BqStream.attr_log.info "#{Time.now}: [QUEUE ORDER ID] #{changes[:id]}"
+      BqStream.attr_log.info "#{Time.now}: [Queueing] "\
+               "#{self.class} : #{id} : #{changes}"
+    end
     changes.each do |k, v|
       if attributes_of_interest.include?(k.to_sym)
-        if self.class.to_s == 'Order' && k.to_s == 'id'
-          BqStream.attr_log.info "#{Time.now}: [QUEUE ORDER ID] #{changes[:id]}"
-          BqStream.attr_log.info "#{Time.now}: [Queueing] "\
-                   "#{self.class} : #{id} : #{k} : #{v[1]}"
-        end
         BqStream::QueuedItem.create(table_name: self.class.to_s,
                                     record_id: id, attr: k,
                                     new_value: v[1].to_s)
