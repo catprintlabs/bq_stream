@@ -44,5 +44,7 @@ class ActiveRecord::Base
                                     new_value: v[1].to_s)
       end
     end
+  rescue Exception => e
+    BqStream.attr_log.info "#{Time.now}: EXCEPTION: #{e}"
   end unless RUBY_ENGINE == 'opal'
 end
