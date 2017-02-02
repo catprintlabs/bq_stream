@@ -33,7 +33,7 @@ class ActiveRecord::Base
     #   BqStream.attr_log.info "#{Time.now}: [QUEUE ORDER ID] #{changes[:id]}"
     # end
     if self.class.to_s == 'Order'
-      BqStream.attr_log.info "#{Time.now}: [QUEUE ORDER ID] #{changes[:id]}"
+      # BqStream.attr_log.info "#{Time.now}: [QUEUE ORDER ID] #{changes[:id]}"
       BqStream.attr_log.info "#{Time.now}: [Queueing] "\
                "#{self.class} : #{id} : #{changes}"
     end

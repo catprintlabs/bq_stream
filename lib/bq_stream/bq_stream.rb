@@ -67,7 +67,7 @@ module BqStream
 
   def self.dequeue_items
     operation = (0...5).map { ('a'..'z').to_a[rand(26)] }.join
-    log.info "#{Time.now}: [Oldest Record (#{available_rows})] Starting..."
+    # log.info "#{Time.now}: [Oldest Record (#{available_rows})] Starting..."
     OldestRecord.update_bq_earliest do |oldest_record, r|
       QueuedItem.create(table_name: oldest_record.table_name,
                         record_id: r.id,
@@ -75,8 +75,8 @@ module BqStream
                         new_value: r[oldest_record.attr],
                         updated_at: r.updated_at)
     end if available_rows > 0
-    log.info "#{Time.now}: [Oldest Record (#{available_rows})] Completed"
-    log.info "#{Time.now}: [dequeue_items #{operation}] Starting..."
+    # log.info "#{Time.now}: [Oldest Record (#{available_rows})] Completed"
+    # log.info "#{Time.now}: [dequeue_items #{operation}] Starting..."
     create_bq_writer
     records = BqStream::QueuedItem.all.limit(BqStream.batch_size)
     data = records.collect do |i|
@@ -86,7 +86,7 @@ module BqStream
     end
     @bq_writer.insert(bq_table_name, data)
     records.each(&:destroy)
-    log.info "#{Time.now}: [dequeue_items #{operation}] Completed."
+    # log.info "#{Time.now}: [dequeue_items #{operation}] Completed."
   end
 
   def self.create_bq_dataset
