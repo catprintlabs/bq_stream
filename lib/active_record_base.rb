@@ -20,8 +20,9 @@ class ActiveRecord::Base
         BqStream::OldestRecord
           .find_or_create_by(table_name: name, attr: attribute)
       end if BqStream.back_date
-      # after_save { queue_item(bq_atr_of_interest) }
-      after_commit on: [:create, :update] { queue_item(bq_atr_of_interest) }
+      after_commit on: [:create, :update] do
+        queue_item(bq_atr_of_interest)
+      end
       after_destroy do
         BqStream::QueuedItem.create(table_name: self.class.to_s, record_id: id)
       end
