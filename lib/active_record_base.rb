@@ -15,12 +15,13 @@ class ActiveRecord::Base
         raise 'You must declare an opts hash with a key of :all, :only '\
           'or :except) and a value as an array, if using :only or :except.'
       end
-      BqStream.attr_log.info "#{Time.now}: [bq_attributes] #{self}" if self.to_s == 'Order'
+      # BqStream.attr_log.info "#{Time.now}: [bq_attributes] #{self}" if self.to_s == 'Order'
       bq_atr_of_interest.each do |attribute|
         BqStream::OldestRecord
           .find_or_create_by(table_name: name, attr: attribute)
       end if BqStream.back_date
-      after_save { queue_item(bq_atr_of_interest) }
+      # after_save { queue_item(bq_atr_of_interest) }
+      after_commit on: [:create, :update] { queue_item(bq_atr_of_interest) }
       after_destroy do
         BqStream::QueuedItem.create(table_name: self.class.to_s, record_id: id)
       end
@@ -33,7 +34,6 @@ class ActiveRecord::Base
     #   BqStream.attr_log.info "#{Time.now}: [QUEUE ORDER ID] #{changes[:id]}"
     # end
     if self.class.to_s == 'Order'
-      # BqStream.attr_log.info "#{Time.now}: [QUEUE ORDER ID] #{changes[:id]}"
       BqStream.attr_log.info "#{Time.now}: [Queueing] "\
                "#{self.class} : #{id} : #{changes}"
     end
