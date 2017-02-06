@@ -80,7 +80,9 @@ describe BqStream do
       end
 
       def insert(*args)
-        args[1][:updated_at] = Time.now
+        args[1].each do |i|
+          i[:updated_at] = Time.now
+        end
         inserted_records << [args]
       end
 
@@ -252,12 +254,20 @@ describe BqStream do
                  'id' => 1,
                  'table_name' => 'TableFirst',
                  'record_id' => @first_record.id,
-                 'attr' => 'name',
-                 'new_value' => 'primary record',
+                 'attr' => 'id',
+                 'new_value' => '1',
                  'updated_at' => @time_stamp.getutc
                },
                 {
                   'id' => 2,
+                  'table_name' => 'TableFirst',
+                  'record_id' => @first_record.id,
+                  'attr' => 'name',
+                  'new_value' => 'primary record',
+                  'updated_at' => @time_stamp.getutc
+                },
+                {
+                  'id' => 3,
                   'table_name' => 'TableFirst',
                   'record_id' => @first_record.id,
                   'attr' => 'description',
@@ -265,7 +275,7 @@ describe BqStream do
                   'updated_at' => @time_stamp.getutc
                 },
                 {
-                  'id' => 3,
+                  'id' => 4,
                   'table_name' => 'TableFirst',
                   'record_id' => @first_record.id,
                   'attr' => 'required',
@@ -273,7 +283,7 @@ describe BqStream do
                   'updated_at' => @time_stamp.getutc
                 },
                 {
-                  'id' => 4,
+                  'id' => 5,
                   'table_name' => 'TableFirst',
                   'record_id' => @first_record.id,
                   'attr' => 'created_at',
@@ -281,19 +291,11 @@ describe BqStream do
                   'updated_at' => @time_stamp.getutc
                 },
                 {
-                  'id' => 5,
+                  'id' => 6,
                   'table_name' => 'TableFirst',
                   'record_id' => @first_record.id,
                   'attr' => 'updated_at',
                   'new_value' => '2017-01-01 00:00:00 UTC',
-                  'updated_at' => @time_stamp.getutc
-                },
-                {
-                  'id' => 6,
-                  'table_name' => 'TableFirst',
-                  'record_id' => @first_record.id,
-                  'attr' => 'id',
-                  'new_value' => '1',
                   'updated_at' => @time_stamp.getutc
                 },
                 {
@@ -369,22 +371,10 @@ describe BqStream do
                ])
       expect(BqStream.bq_writer.inserted_records)
         .to eq([[['bq_datastream',
-                  { table_name: 'TableThird',
-                    record_id: @old_record.id,
-                    attr: 'notes',
-                    new_value: 'an old record',
-                    updated_at: @time_stamp }]],
-                [['bq_datastream',
-                  { table_name: 'TableThird',
-                    record_id: @old_record.id,
-                    attr: 'updated_at',
-                    new_value: '2016-09-21 00:00:00.000000000 +0000',
-                    updated_at: @time_stamp }]],
-                [['bq_datastream',
-                  { table_name: 'TableThird',
-                    record_id: @old_record.id,
-                    attr: 'name',
-                    new_value: 'old record',
+                  { table_name: 'TableFirst',
+                    record_id: @first_record.id,
+                    attr: 'id',
+                    new_value: @first_record.id.to_s,
                     updated_at: @time_stamp }]],
                 [['bq_datastream',
                   { table_name: 'TableFirst',
@@ -415,12 +405,6 @@ describe BqStream do
                     record_id: @first_record.id,
                     attr: 'updated_at',
                     new_value: '2017-01-01 00:00:00 UTC',
-                    updated_at: @time_stamp }]],
-                [['bq_datastream',
-                  { table_name: 'TableFirst',
-                    record_id: @first_record.id,
-                    attr: 'id',
-                    new_value: @first_record.id.to_s,
                     updated_at: @time_stamp }]],
                 [['bq_datastream',
                   { table_name: 'TableSecond',
@@ -463,6 +447,24 @@ describe BqStream do
                     record_id: @second_record.id,
                     attr: nil,
                     new_value: nil,
+                    updated_at: @time_stamp }]],
+                [['bq_datastream',
+                  { table_name: 'TableThird',
+                    record_id: @old_record.id,
+                    attr: 'notes',
+                    new_value: 'an old record',
+                    updated_at: @time_stamp }]],
+                [['bq_datastream',
+                  { table_name: 'TableThird',
+                    record_id: @old_record.id,
+                    attr: 'updated_at',
+                    new_value: '2016-09-21 00:00:00.000000000 +0000',
+                    updated_at: @time_stamp }]],
+                [['bq_datastream',
+                  { table_name: 'TableThird',
+                    record_id: @old_record.id,
+                    attr: 'name',
+                    new_value: 'old record',
                     updated_at: @time_stamp }]]])
     end
 
