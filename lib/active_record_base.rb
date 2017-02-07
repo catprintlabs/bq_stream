@@ -30,6 +30,7 @@ class ActiveRecord::Base
     if self.class.to_s == 'Order'
       BqStream.attr_log.info "#{Time.now}: [Queueing] "\
                "#{self.class} : #{id} : #{changes}"
+      BqStream.log.info "#{Time.now}: [ORDER ID BEFORE CHANGES] #{id}"
     end
     changes.each do |k, v|
       if self.class.to_s == 'Order' && k == 'id'
