@@ -27,15 +27,12 @@ class ActiveRecord::Base
   end
 
   def queue_item(attributes_of_interest)
-    # if self.class.to_s == 'Order'
-    #   binding.pry
-    #   BqStream.attr_log.info "#{Time.now}: [QUEUE ORDER ID] #{changes[:id]}"
-    # end
     if self.class.to_s == 'Order'
       BqStream.attr_log.info "#{Time.now}: [Queueing] "\
                "#{self.class} : #{id} : #{changes}"
     end
     changes.each do |k, v|
+      BqStream.log.info "#{Time.now}: [ID ATTRIBUTE] #{id}" if k == 'id'
       if attributes_of_interest.include?(k.to_sym)
         BqStream::QueuedItem.create(table_name: self.class.to_s,
                                     record_id: id, attr: k,
