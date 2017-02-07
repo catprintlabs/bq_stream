@@ -15,7 +15,7 @@ module BqStream
   define_setting :batch_size, 1000
 
   def self.log
-    @log ||= Logger.new(Rails.root.join('log/bq_stream.log').to_s,
+    @bq_log ||= Logger.new(Rails.root.join('log/bq_stream.log').to_s,
                         File::WRONLY | File::APPEND)
   end
 
