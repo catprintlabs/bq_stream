@@ -19,10 +19,17 @@ class ActiveRecord::Base
         BqStream::OldestRecord
           .find_or_create_by(table_name: name, attr: attribute)
       end if BqStream.back_date
+      before_save { track_orders }
       after_save { queue_item(bq_atr_of_interest) }
       after_destroy do
         BqStream::QueuedItem.create(table_name: self.class.to_s, record_id: id)
       end
+    end
+  end
+
+  def track_orders
+    if self.class.to_s == 'Order'
+      BqStream.log.info "#{Time.now}: [ORDER ID BEFORE SAVE] #{id}"
     end
   end
 
