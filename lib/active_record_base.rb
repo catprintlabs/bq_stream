@@ -19,7 +19,6 @@ class ActiveRecord::Base
         BqStream::OldestRecord
           .find_or_create_by(table_name: name, attr: attribute)
       end if BqStream.back_date
-      before_save { track_orders }
       after_save { queue_item(bq_atr_of_interest) }
       after_destroy do
         BqStream::QueuedItem.create(table_name: self.class.to_s, record_id: id)
@@ -27,22 +26,8 @@ class ActiveRecord::Base
     end
   end
 
-  def track_orders
-    if self.class.to_s == 'Order'
-      BqStream.log.info "#{Time.now}: [ORDER ID BEFORE SAVE] #{id}"
-    end
-  end
-
   def queue_item(attributes_of_interest)
-    if self.class.to_s == 'Order'
-      BqStream.attr_log.info "#{Time.now}: [Queueing] "\
-               "#{self.class} : #{id} : #{changes}"
-      BqStream.log.info "#{Time.now}: [ORDER ID BEFORE CHANGES] #{id}"
-    end
     changes.each do |k, v|
-      if self.class.to_s == 'Order' && k == 'id'
-        BqStream.log.info "#{Time.now}: [ORDER ID IN CHANGES] #{id}"
-      end
       if attributes_of_interest.include?(k.to_sym)
         BqStream::QueuedItem.create(table_name: self.class.to_s,
                                     record_id: id, attr: k,
@@ -50,6 +35,6 @@ class ActiveRecord::Base
       end
     end
   rescue Exception => e
-    BqStream.attr_log.info "#{Time.now}: EXCEPTION: #{e}"
+    BqStream.log.info "#{Time.now}: EXCEPTION: #{e}"
   end unless RUBY_ENGINE == 'opal'
 end
