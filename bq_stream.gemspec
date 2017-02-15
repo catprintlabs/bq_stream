@@ -42,5 +42,5 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency 'timecop'
   spec.add_dependency 'dotenv'
   spec.add_dependency 'activerecord'
-  spec.add_dependency 'bigquery', '~>0.9.0'
+  # spec.add_dependency 'bigquery', '~>0.9.0'
 end
