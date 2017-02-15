@@ -4,10 +4,11 @@ BqStream can be used Google's BigQuery to send selected model attribute values w
 
 ## Installation
 
-Add this line to your application's Gemfile:
+Add the following lines to your application's Gemfile:
 
 ```ruby
 gem 'bq_stream'
+gem 'bigquery', '~>0.9.0'
 ```
 
 And then execute:
