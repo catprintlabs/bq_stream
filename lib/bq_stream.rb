@@ -4,7 +4,7 @@ unless RUBY_ENGINE == 'opal'
   require 'active_record'
   require 'dotenv'
   Dotenv.load
-  require 'big_query'
+  # require 'big_query' # Taken out if not putting biquery gem in app Gemfile
   require 'bq_stream/version'
   require 'bq_stream/configuration'
   require 'bq_stream/queued_item'
