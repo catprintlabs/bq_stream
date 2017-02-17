@@ -4,6 +4,7 @@ unless RUBY_ENGINE == 'opal'
   require 'active_record'
   require 'dotenv'
   Dotenv.load
+  require 'big_query'
   require 'bq_stream/version'
   require 'bq_stream/configuration'
   require 'bq_stream/queued_item'
