@@ -27,7 +27,7 @@ class ActiveRecord::Base
   end
 
   def queue_item(attributes_of_interest)
-    if self.class.to_s == 'User'
+    if self.class.to_s == 'User' || self.class.to_s == 'Order'
       BqStream.log.info "#{Time.now}: [Queueing] "\
                "#{self.class} : #{id} : #{changes}"
     end
