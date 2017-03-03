@@ -19,10 +19,24 @@ class ActiveRecord::Base
         BqStream::OldestRecord
           .find_or_create_by(table_name: name, attr: attribute)
       end if BqStream.back_date
+      after_create { queue_default(bq_atr_of_interest) }
       after_save { queue_item(bq_atr_of_interest) }
       after_destroy do
         BqStream::QueuedItem.create(table_name: self.class.to_s, record_id: id)
       end
+    end
+  end
+
+  def queue_default(attributes_of_interest)
+    items = self.class.columns_hash.collect do |k, v|
+      if attributes_of_interest.include?(k.to_sym) && !v.default.nil? && changes.exclude?(k)
+        { k => v.default }
+      end
+    end.compact
+    items.each do |i|
+      BqStream::QueuedItem.create(table_name: self.class.to_s,
+                                  record_id: id, attr: i.keys.first.to_sym,
+                                  new_value: i[i.keys.first].to_s)
     end
   end
 

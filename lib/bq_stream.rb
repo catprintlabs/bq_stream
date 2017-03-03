@@ -13,7 +13,7 @@ unless RUBY_ENGINE == 'opal'
   Opal.append_path File.expand_path('../', __FILE__).untaint
 end
 
-# Use requires below for testing
+# Use the requires below for testing
 
 # require 'active_record'
 # require 'active_record_base'
