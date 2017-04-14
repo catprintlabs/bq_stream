@@ -16,7 +16,12 @@ module BqStream
 
   def self.log
     @bq_log ||= Logger.new(Rails.root.join('log/bq_stream.log').to_s,
-                        File::WRONLY | File::APPEND)
+                           File::WRONLY | File::APPEND)
+  end
+
+  def self.logger
+    @bq_logger ||= Logger.new(Rails.root.join('log/billing_time.log').to_s,
+                              File::WRONLY | File::APPEND)
   end
 
   def self.create_bq_writer
