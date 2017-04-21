@@ -15,10 +15,14 @@ module BqStream
     end
 
     def older_records
-      table_class.where(
-        'updated_at < ? AND updated_at >= ?',
-        bq_earliest_update || Time.now, BqStream.back_date
-      ).order('updated_at DESC').limit(BqStream.available_rows)
+      if table_class.column_names.include? 'updated_at'
+        table_class.where(
+          'updated_at < ? AND updated_at >= ?',
+          bq_earliest_update || Time.now, BqStream.back_date
+        ).order('updated_at DESC').limit(BqStream.available_rows)
+      else
+        []
+      end
     end
 
     def self.build_table
