@@ -67,6 +67,11 @@ module BqStream
 
   def self.dequeue_items
     OldestRecord.update_bq_earliest do |oldest_record, r|
+      if oldest_record.table_name == 'Order' && (oldest_record.attr == 'friendly_id' || oldest_record.attr == 'order_billing_time')
+        BqStream.logger.info "#{Time.now}: [Queueing Order #{r.id}]: "\
+          "Attr: #{oldest_record.attr}, New Value: #{r[oldest_record.attr]}, "\
+          "Updated: #{r.updated_at}"
+      end
       QueuedItem.create(table_name: oldest_record.table_name,
                         record_id: r.id,
                         attr: oldest_record.attr,
