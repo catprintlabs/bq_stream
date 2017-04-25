@@ -48,16 +48,16 @@ module BqStream
                                    'as bq_earliest_update FROM '\
                                    "[#{project_id}:#{dataset}.#{bq_table_name}] "\
                                    'GROUP BY table_name, attr')
+    Rollbar.info("BqStream Log: #{old_records['rows'].count}")
     old_records['rows'].each do |r|
-      OldestRecord.create(table_name: r['f'][0]['v'],
-                          attr: r['f'][1]['v'],
-                          bq_earliest_update: Time.at(r['f'][2]['v'].to_f))
+      r = OldestRecord.find_by(table_name: r['f'][0]['v'],
+                               attr: r['f'][1]['v'])
+      r && r.update(bq_earliest_update: Time.at(r['f'][2]['v'].to_f))
     end if old_records['rows']
   end
 
   def self.available_rows
-    available = batch_size - QueuedItem.all.count
-    available > 0 ? available : 0
+    [batch_size - QueuedItem.all.count, 0].max
   end
 
   def self.encode_value(value)
@@ -67,11 +67,6 @@ module BqStream
 
   def self.dequeue_items
     OldestRecord.update_bq_earliest do |oldest_record, r|
-      if oldest_record.table_name == 'Order' && (oldest_record.attr == 'friendly_id' || oldest_record.attr == 'order_billing_time')
-        BqStream.logger.info "#{Time.now}: [Queueing Order #{r.id}]: "\
-          "Attr: #{oldest_record.attr}, New Value: #{r[oldest_record.attr]}, "\
-          "Updated: #{r.updated_at}"
-      end
       QueuedItem.create(table_name: oldest_record.table_name,
                         record_id: r.id,
                         attr: oldest_record.attr,
