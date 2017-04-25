@@ -2,6 +2,7 @@ module BqStream
   class OldestRecord < ActiveRecord::Base
     def self.update_bq_earliest(&block)
       BqStream.logger.info "#{Time.now}: #{OldestRecord.count rescue 0} in OldestRecord"
+      Rollbar.log('info', 'BqStream', message: "#{Time.now}: #{OldestRecord.count rescue 0} in OldestRecord")
       OldestRecord.all.each { |old_rec| old_rec.update_oldest_records(&block) }
     end
 
