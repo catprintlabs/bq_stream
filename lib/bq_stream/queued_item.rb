@@ -1,5 +1,7 @@
 module BqStream
   class QueuedItem < ActiveRecord::Base
+    default_scope { order(updated_at: :asc) }
+
     def self.build_table
       self.table_name = BqStream.queued_items_table_name
 
