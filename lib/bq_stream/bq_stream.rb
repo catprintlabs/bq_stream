@@ -25,6 +25,7 @@ module BqStream
   end
 
   def self.create_bq_writer
+    require 'big_query'
     opts = {}
     opts['client_id']     = client_id
     opts['service_email'] = service_email
@@ -49,6 +50,7 @@ module BqStream
                                    "[#{project_id}:#{dataset}.#{bq_table_name}] "\
                                    'GROUP BY table_name, attr')
     Rollbar.log('info', 'BqStream', message: "#{old_records['rows'].count rescue 0} Old Records in BigQuery")
+    logger.info "#{Time.now}: BqStream: #{old_records['rows'].count rescue 0} Old Records in BigQuery"
     old_records['rows'].each do |r|
       r = OldestRecord.find_by(table_name: r['f'][0]['v'],
                                attr: r['f'][1]['v'])
