@@ -20,7 +20,7 @@ module BqStream
   end
 
   def self.logger
-    @bq_logger ||= Logger.new(Rails.root.join('log/billing_time.log').to_s,
+    @bq_logger ||= Logger.new(Rails.root.join('log/oldest_record.log').to_s,
                               File::WRONLY | File::APPEND)
   end
 
@@ -48,7 +48,7 @@ module BqStream
                                    'as bq_earliest_update FROM '\
                                    "[#{project_id}:#{dataset}.#{bq_table_name}] "\
                                    'GROUP BY table_name, attr')
-    Rollbar.info("BqStream Log: #{old_records['rows'].count}")
+    BqStream.logger.info "#{Time.now}: #{old_records['rows'].count} Old Records"
     old_records['rows'].each do |r|
       r = OldestRecord.find_by(table_name: r['f'][0]['v'],
                                attr: r['f'][1]['v'])

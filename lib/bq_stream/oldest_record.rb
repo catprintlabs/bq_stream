@@ -1,17 +1,21 @@
 module BqStream
   class OldestRecord < ActiveRecord::Base
     def self.update_bq_earliest(&block)
-      Rollbar.info("BqStream Log: #{OldestRecord.count}")
+      BqStream.logger.info "#{Time.now}: #{OldestRecord.count} in OldestRecord"
       OldestRecord.all.each { |old_rec| old_rec.update_oldest_records(&block) }
     end
 
     def update_oldest_records
-      Rollbar.info("BqStream Log: #{older_records.count} Older Records for #{attr} with #{available_rows} available rows")
+      Rollbar.info("BqStream Log: #{older_records.count} Older Records for "\
+                   "#{attr} with #{available_rows} available rows")
+      BqStream.logger.info "#{Time.now}: #{older_records.count} Older Records "\
+                           "for #{attr} with #{available_rows} available rows"
       destroy && return if older_records.empty?
       return if BqStream.available_rows.zero?
       records = older_records.limit(BqStream.available_rows)
       records.each { |r| yield self, r }
-      Rollbar.info("BqStream Log: attr #{attr} updated to #{records.last.updated_at}")
+      BqStream.logger.info "#{Time.now}: attr #{attr} updated to "\
+                           "#{records.last.updated_at}"
       update(bq_earliest_update: records.last.updated_at)
     end
 
