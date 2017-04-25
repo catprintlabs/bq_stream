@@ -48,7 +48,7 @@ module BqStream
                                    'as bq_earliest_update FROM '\
                                    "[#{project_id}:#{dataset}.#{bq_table_name}] "\
                                    'GROUP BY table_name, attr')
-    BqStream.logger.info "#{Time.now}: #{old_records['rows'].count} Old Records"
+    BqStream.logger.info "#{Time.now}: #{old_records['rows'].count rescue 0} Old Records"
     old_records['rows'].each do |r|
       r = OldestRecord.find_by(table_name: r['f'][0]['v'],
                                attr: r['f'][1]['v'])
