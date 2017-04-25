@@ -6,7 +6,7 @@ module BqStream
 
     def update_oldest_records
       destroy && return if older_records.empty?
-      older_records.each { |r| yield self, r }
+      older_records.limit(BqStream.available_rows).each { |r| yield self, r }
       update(bq_earliest_update: older_records.first.updated_at)
     end
 
@@ -18,7 +18,7 @@ module BqStream
       table_class.where(
         'updated_at < ? AND updated_at >= ?',
         bq_earliest_update || Time.now, BqStream.back_date
-      ).order('updated_at DESC').limit(BqStream.available_rows)
+      ).order('updated_at DESC')
     end
 
     def self.build_table

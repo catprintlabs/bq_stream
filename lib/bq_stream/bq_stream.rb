@@ -46,8 +46,8 @@ module BqStream
   def self.initialize_old_records
     old_records = @bq_writer.query('SELECT table_name, attr, min(updated_at) '\
                                    'as bq_earliest_update FROM '\
-                                   "[#{ENV['PROJECT_ID']}:#{ENV['DATASET']}."\
-                                   "#{bq_table_name}] GROUP BY table_name, attr")
+                                   "[#{project_id}:#{dataset}.#{bq_table_name}] "\
+                                   'GROUP BY table_name, attr')
     old_records['rows'].each do |r|
       OldestRecord.create(table_name: r['f'][0]['v'],
                           attr: r['f'][1]['v'],
