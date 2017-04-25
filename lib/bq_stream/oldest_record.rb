@@ -6,8 +6,6 @@ module BqStream
     end
 
     def update_oldest_records
-      Rollbar.info("BqStream Log: #{older_records.count rescue 0} Older Records for "\
-                   "#{attr} with #{available_rows} available rows")
       BqStream.logger.info "#{Time.now}: #{older_records.count rescue 0} Older Records "\
                            "for #{attr} with #{available_rows} available rows"
       destroy && return if older_records.empty?
