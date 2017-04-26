@@ -18,6 +18,7 @@ class ActiveRecord::Base
       bq_atr_of_interest.each do |attribute|
         BqStream::OldestRecord
           .find_or_create_by(table_name: name, attr: attribute)
+        BqStream.oldest_record_log.info "#{Time.now}: Table Name: #{name}, Attr: #{attr}, OldestRecord Count: #{BqStream::OldestRecord.count}"
       end if BqStream.back_date
       after_create { queue_default(bq_atr_of_interest) }
       after_save { queue_item(bq_atr_of_interest) }

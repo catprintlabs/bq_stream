@@ -20,7 +20,12 @@ module BqStream
   end
 
   def self.logger
-    @bq_logger ||= Logger.new(Rails.root.join('log/oldest_record.log').to_s,
+    @bq_logger ||= Logger.new(Rails.root.join('log/older_record.log').to_s,
+                              File::WRONLY | File::APPEND)
+  end
+
+  def self.oldest_record_log
+    @bq_oldest_record_log ||= Logger.new(Rails.root.join('log/oldest_record.log').to_s,
                               File::WRONLY | File::APPEND)
   end
 
@@ -49,7 +54,6 @@ module BqStream
                                    'as bq_earliest_update FROM '\
                                    "[#{project_id}:#{dataset}.#{bq_table_name}] "\
                                    'GROUP BY table_name, attr')
-    Rollbar.log('info', 'BqStream', message: "#{old_records['rows'].count rescue 0} Old Records in BigQuery")
     logger.info "#{Time.now}: BqStream: #{old_records['rows'].count rescue 0} Old Records in BigQuery"
     old_records['rows'].each do |r|
       r = OldestRecord.find_by(table_name: r['f'][0]['v'],
@@ -68,6 +72,7 @@ module BqStream
   end
 
   def self.dequeue_items
+    Rollbar.log('info', 'BqStream', message: "dequeue_items called and #{OldestRecord.count rescue 0} in OldestRecord")
     OldestRecord.update_bq_earliest do |oldest_record, r|
       QueuedItem.create(table_name: oldest_record.table_name,
                         record_id: r.id,
