@@ -59,8 +59,8 @@ module BqStream
       r = OldestRecord.find_by(table_name: r['f'][0]['v'],
                                attr: r['f'][1]['v'])
       r && r.update(bq_earliest_update: Time.at(r['f'][2]['v'].to_f))
+      logger.info "#{Time.now}: !!!!! #{BqStream::OldestRecord.count} in OldestRecord within initialize old records"
     end if old_records['rows']
-    logger.info "#{Time.now}: !!!!! #{BqStream::OldestRecord.count} in OldestRecord at end of initialize old records"
   end
 
   def self.available_rows
