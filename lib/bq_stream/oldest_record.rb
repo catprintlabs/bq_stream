@@ -6,9 +6,9 @@ module BqStream
     end
 
     def update_oldest_records
-      Rollbar.log('info', 'BqStream', message: "#{OldestRecord.count rescue 0} before destroy in OldestRecord")
+      # Rollbar.log('info', 'BqStream', message: "#{OldestRecord.count rescue 0} before destroy in OldestRecord")
       destroy && return if older_records.empty?
-      Rollbar.log('info', 'BqStream', message: "#{OldestRecord.count rescue 0} after destroy in OldestRecord")
+      # Rollbar.log('info', 'BqStream', message: "#{OldestRecord.count rescue 0} after destroy in OldestRecord")
       return if BqStream.available_rows.zero?
       Rollbar.log('info', 'BqStream', message: "#{older_records.count rescue 0} Older Records for #{table_class}.#{attr} with #{BqStream.available_rows} available rows")
       records = older_records.limit(BqStream.available_rows)

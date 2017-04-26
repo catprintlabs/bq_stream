@@ -82,19 +82,20 @@ module BqStream
                         updated_at: r.updated_at)
     end if available_rows > 0
     Rollbar.log('info', 'BqStream', message: "dequeue_items #{OldestRecord.count rescue 0} after update_bq_earliest in OldestRecord")
+    # TODO: From here to the next dequeue_items there is an increase in records to OldestRecord
     create_bq_writer
-    # Rollbar.log('info', 'BqStream', message: "dequeue_items #{OldestRecord.count rescue 0} after create_bq_wwriter in OldestRecord")
+    Rollbar.log('info', 'BqStream', message: "dequeue_items #{OldestRecord.count rescue 0} after create_bq_wwriter in OldestRecord")
     records = BqStream::QueuedItem.all.limit(BqStream.batch_size)
     data = records.collect do |i|
       new_val = encode_value(i.new_value) rescue nil
       { table_name: i.table_name, record_id: i.record_id, attr: i.attr,
         new_value: new_val ? new_val : i.new_value, updated_at: i.updated_at }
     end
-    # Rollbar.log('info', 'BqStream', message: "dequeue_items #{OldestRecord.count rescue 0} before bq insert in OldestRecord")
+    Rollbar.log('info', 'BqStream', message: "dequeue_items #{OldestRecord.count rescue 0} before bq insert in OldestRecord")
     @bq_writer.insert(bq_table_name, data)
-    # Rollbar.log('info', 'BqStream', message: "dequeue_items #{OldestRecord.count rescue 0} after bq insert in OldestRecord")
+    Rollbar.log('info', 'BqStream', message: "dequeue_items #{OldestRecord.count rescue 0} after bq insert in OldestRecord")
     records.each(&:destroy)
-    # Rollbar.log('info', 'BqStream', message: "dequeue_items end #{OldestRecord.count rescue 0} in OldestRecord")
+    Rollbar.log('info', 'BqStream', message: "dequeue_items end #{OldestRecord.count rescue 0} in OldestRecord")
   end
 
   def self.create_bq_dataset
