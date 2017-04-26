@@ -59,8 +59,8 @@ module BqStream
       r = OldestRecord.find_by(table_name: r['f'][0]['v'],
                                attr: r['f'][1]['v'])
       r && r.update(bq_earliest_update: Time.at(r['f'][2]['v'].to_f))
-      logger.info "#{Time.now}: !!!!! #{BqStream::OldestRecord.count} in OldestRecord within initialize old records"
     end if old_records['rows']
+    # TODO: There are 0 records in OldestRecord at this point
   end
 
   def self.available_rows
@@ -73,7 +73,7 @@ module BqStream
   end
 
   def self.dequeue_items
-    Rollbar.log('info', 'BqStream', message: "dequeue_items called and #{OldestRecord.count rescue 0} in OldestRecord")
+    Rollbar.log('info', 'BqStream', message: "dequeue_items start #{OldestRecord.count rescue 0} in OldestRecord")
     OldestRecord.update_bq_earliest do |oldest_record, r|
       QueuedItem.create(table_name: oldest_record.table_name,
                         record_id: r.id,
@@ -90,6 +90,7 @@ module BqStream
     end
     @bq_writer.insert(bq_table_name, data)
     records.each(&:destroy)
+    Rollbar.log('info', 'BqStream', message: "dequeue_items end #{OldestRecord.count rescue 0} in OldestRecord")
   end
 
   def self.create_bq_dataset
