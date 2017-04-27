@@ -39,7 +39,7 @@ module BqStream
       end
 
       create(table_name: '! revision !', attr: `cat #{Rails.root}/REVISION`)
-      BqStream.oldest_record_log.info "#{Time.now}: Table Name: #{name}, Attr: #{attribute}, OldestRecord Count: #{BqStream::OldestRecord.count} and Record already exists #{!!record}"
+      BqStream.oldest_record_log.info "#{Time.now}: Table Name: #{name}, Attr: #{attribute}, OldestRecord Count: #{BqStream::OldestRecord.count}"
     end
 
     do_not_synchronize rescue nil # if Hyperloop is running
