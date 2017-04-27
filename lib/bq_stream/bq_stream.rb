@@ -56,9 +56,9 @@ module BqStream
                                    'GROUP BY table_name, attr')
     logger.info "#{Time.now}: BqStream: #{old_records['rows'].count rescue 0} Old Records in BigQuery"
     old_records['rows'].each do |r|
-      r = OldestRecord.find_by(table_name: r['f'][0]['v'],
+      rec = OldestRecord.find_by(table_name: r['f'][0]['v'],
                                attr: r['f'][1]['v'])
-      r && r.update(bq_earliest_update: Time.at(r['f'][2]['v'].to_f))
+      rec && rec.update(bq_earliest_update: Time.at(r['f'][2]['v'].to_f))
     end if old_records['rows']
     # TODO: There are 0 records in OldestRecord at this point
   end
