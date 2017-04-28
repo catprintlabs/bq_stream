@@ -1,37 +1,46 @@
 module BqStream
   class OldestRecord < ActiveRecord::Base
-    def self.update_bq_earliest(&block)
-      Rollbar.log('info', 'BqStream', message: "#{OldestRecord.count rescue 0} in update_bq_earliest in OldestRecord")
-      OldestRecord.all.each { |old_rec| old_rec.update_oldest_records(&block) }
+    def self.update_bq_earliest
+      BqStream::QueuedItem.buffer.clear
+      until BqStream::QueuedItem.available_rows.zero? || table_names.empty?
+        table_names.each { |table| update_oldest_records_for(table) }
+      end
+      BqStream::QueuedItem.create_from_buffer
+      BqStream::QueuedItem.buffer.clear
     end
 
-    def update_oldest_records
-      # Rollbar.log('info', 'BqStream', message: "#{OldestRecord.count rescue 0} before destroy in OldestRecord")
-      destroy && return if older_records.empty?
-      # Rollbar.log('info', 'BqStream', message: "#{OldestRecord.count rescue 0} after destroy in OldestRecord")
-      return if BqStream.available_rows.zero?
-      Rollbar.log('info', 'BqStream', message: "#{older_records.count rescue 0} Older Records for #{table_class}.#{attr} with #{BqStream.available_rows} available rows")
-      records = older_records.limit(BqStream.available_rows)
-      records.each { |r| yield self, r }
-      Rollbar.log('info', 'BqStream', message: "attr #{attr} updated to #{records.last.updated_at}")
-      update(bq_earliest_update: records.last.updated_at)
+    def self.table_names
+      where("table_name <> '! revision !'").pluck(:table_name).uniq
     end
 
-    def table_class
-      @table_class ||= table_name.constantize
+    def buffer_attribute(r)
+      BqStream::QueuedItem.buffer << { table_name: table_name,
+                                       record_id: r.id,
+                                       attr: attr,
+                                       new_value: r[attr],
+                                       updated_at: r.updated_at }
     end
 
-    def older_records
-      table_class.where(
+    def self.update_oldest_records_for(table)
+      oldest_attr_recs = where('table_name = ?', table)
+      next_record = next_record_to_write(table.constantize, oldest_attr_recs.pluck(:bq_earliest_update).compact.min)
+      oldest_attr_recs.delete_all && return unless next_record
+      oldest_attr_recs.each do |oldest_attr_rec|
+        oldest_attr_rec.buffer_attribute(next_record)
+      end
+      oldest_attr_recs.update_all(bq_earliest_update: next_record.updated_at)
+    end
+
+    def self.next_record_to_write(table, earliest_update)
+      table.where(
         'updated_at >= ? AND updated_at < ?',
-        BqStream.back_date, bq_earliest_update || Time.now
-      ).order('updated_at DESC')
+        BqStream.back_date, earliest_update || Time.now
+      ).order('updated_at DESC').first # limit(1)
     end
 
     def self.build_table
       return if connection.tables.include?(BqStream.oldest_record_table_name) && find_by(table_name: '! revision !', attr: `cat #{Rails.root}/REVISION`)
       self.table_name = BqStream.oldest_record_table_name
-
       connection.create_table(table_name, force: true) do |t|
         t.string   :table_name
         t.string   :attr
