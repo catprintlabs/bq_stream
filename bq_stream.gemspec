@@ -41,6 +41,7 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency 'pry-rescue'
   spec.add_development_dependency 'timecop'
   spec.add_development_dependency 'bigquery', '~>0.9.0'
+  spec.add_dependency 'bulk_insert'
   spec.add_dependency 'dotenv'
   spec.add_dependency 'activerecord'
 end
