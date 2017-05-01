@@ -24,11 +24,6 @@ module BqStream
                               File::WRONLY | File::APPEND)
   end
 
-  def self.oldest_record_log
-    @bq_oldest_record_log ||= Logger.new(Rails.root.join('log/oldest_record.log').to_s,
-                              File::WRONLY | File::APPEND)
-  end
-
   def self.create_bq_writer
     require 'big_query'
     opts = {}
@@ -59,7 +54,6 @@ module BqStream
                                attr: r['f'][1]['v'])
       rec && rec.update(bq_earliest_update: Time.at(r['f'][2]['v'].to_f))
     end if old_records['rows']
-    # TODO: There are 0 records in OldestRecord at this point
   end
 
   def self.encode_value(value)

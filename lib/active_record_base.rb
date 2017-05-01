@@ -21,7 +21,6 @@ class ActiveRecord::Base
         unless record
           BqStream::OldestRecord.create(table_name: name, attr: attribute)
         end
-        BqStream.oldest_record_log.info "#{Time.now}: Table Name: #{name}, Attr: #{attribute}, OldestRecord Count: #{BqStream::OldestRecord.count} and Record already exists #{!!record}"
       end if BqStream.back_date
       after_create { queue_default(bq_atr_of_interest) }
       after_save { queue_item(bq_atr_of_interest) }
