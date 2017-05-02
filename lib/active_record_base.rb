@@ -16,11 +16,7 @@ class ActiveRecord::Base
           'or :except) and a value as an array, if using :only or :except.'
       end
       bq_atr_of_interest.each do |attribute|
-        record =
-          BqStream::OldestRecord.find_by(table_name: name, attr: attribute)
-        unless record
-          BqStream::OldestRecord.create(table_name: name, attr: attribute)
-        end
+        BqStream::OldestRecord.find_or_create_by(table_name: name, attr: attribute)
       end if BqStream.back_date
       after_create { queue_default(bq_atr_of_interest) }
       after_save { queue_item(bq_atr_of_interest) }

@@ -33,7 +33,7 @@ module BqStream
 
     def self.next_record_to_write(table, earliest_update)
       table.where(
-        'updated_at >= ? AND updated_at < ?',
+        'created_at >= ? AND created_at < ?',
         BqStream.back_date, earliest_update || Time.now
       ).order('updated_at DESC').first # limit(1)
     end
