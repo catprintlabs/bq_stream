@@ -49,8 +49,8 @@ module BqStream
                                    'as bq_earliest_update FROM '\
                                    "[#{project_id}:#{dataset}.#{bq_table_name}] "\
                                    'GROUP BY table_name, attr')
-    log.info "#{Time.now}: old_records.count: #{old_records['rows'].count}"
-    log.info "#{Time.now}: OldestRecord: #{OldestRecord.count}"
+    log.info "#{Time.now}: ior old_records.count: #{old_records['rows'].count}"
+    log.info "#{Time.now}: ior OldestRecord: #{OldestRecord.count}"
     old_records['rows'].each do |r|
       rec = OldestRecord.find_or_create_by(table_name: r['f'][0]['v'],
                                            attr: r['f'][1]['v'])
@@ -65,6 +65,7 @@ module BqStream
 
   def self.dequeue_items
     logger.info "#{Time.now}: Dequeue Items Started"
+    log.info "#{Time.now}: di start OldestRecord: #{OldestRecord.count}"
     OldestRecord.update_bq_earliest
     create_bq_writer
     records = QueuedItem.all.limit(batch_size)
@@ -75,6 +76,7 @@ module BqStream
     end
     @bq_writer.insert(bq_table_name, data) unless data.empty?
     QueuedItem.delete_all_with_limit
+    log.info "#{Time.now}: di end OldestRecord: #{OldestRecord.count}"
     logger.info "#{Time.now}: Dequeue Items Ended"
   end
 
