@@ -19,12 +19,8 @@ class ActiveRecord::Base
         BqStream::OldestRecord.find_or_create_by(table_name: name, attr: attribute)
         BqStream.log.info "#{Time.now}: bqa #{self} | #{attribute} OldestRecord: #{BqStream::OldestRecord.count}"
       end if BqStream.back_date
-      after_create do
-        BqStream.log.info "#{Time.now}: bqa-after_create #{self} | #{attribute} OldestRecord: #{BqStream::OldestRecord.count}"
-        queue_default(bq_atr_of_interest)
-      end
-      after_save do
-        queue_item(bq_atr_of_interest)
+      after_create { queue_default(bq_atr_of_interest) }
+      after_save { queue_item(bq_atr_of_interest) }
       end
       after_destroy do
         BqStream::QueuedItem.create(table_name: self.class.to_s, record_id: id)
