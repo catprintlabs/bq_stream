@@ -56,6 +56,7 @@ module BqStream
                                            attr: r['f'][1]['v'])
       rec.update(bq_earliest_update: Time.at(r['f'][2]['v'].to_f))
     end if old_records['rows']
+    log.info "#{Time.now}: ior end OldestRecord: #{OldestRecord.count}"
   end
 
   def self.encode_value(value)
