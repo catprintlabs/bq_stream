@@ -24,7 +24,6 @@ class ActiveRecord::Base
         queue_default(bq_atr_of_interest)
       end
       after_save do
-        BqStream.log.info "#{Time.now}: bqa-after_save #{self} | #{attribute} OldestRecord: #{BqStream::OldestRecord.count}"
         queue_item(bq_atr_of_interest)
       end
       after_destroy do
