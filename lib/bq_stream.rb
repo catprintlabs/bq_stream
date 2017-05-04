@@ -9,7 +9,7 @@ unless RUBY_ENGINE == 'opal'
   require 'bq_stream/queued_item'
   require 'bq_stream/oldest_record'
   require 'bq_stream/bq_stream'
-  require 'bulk_insert'
+  # require 'bulk_insert'
   Opal.append_path File.expand_path('../', __FILE__).untaint
 end
 
