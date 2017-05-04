@@ -23,6 +23,10 @@ class ActiveRecord::Base
           BqStream.log.info "#{Time.now}: creating in bqa #{self} | #{attribute} OldestRecord: #{BqStream::OldestRecord.count}"
           BqStream::OldestRecord.create(table_name: name, attr: attribute)
         end
+        if BqStream::OldestRecord.count > 176
+          r = BqStream::OldestRecord.last
+          BqStream.log.info "*****  id: #{r.id}, table_name: #{i.table_name}, attr: #{i.attr}, bq_earliest_update: #{i.bq_earliest_update} *****"
+        end
       end if BqStream.back_date
       after_create { queue_default(bq_atr_of_interest) }
       after_save { queue_item(bq_atr_of_interest) }
