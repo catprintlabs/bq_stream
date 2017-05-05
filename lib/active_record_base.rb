@@ -21,8 +21,8 @@ class ActiveRecord::Base
         BqStream.log.info "#{Time.now}: found in bqa #{self} | #{attribute} OldestRecord: #{BqStream::OldestRecord.count}" if record
         unless record
           BqStream.log.info "#{Time.now}: creating in bqa #{self} | #{attribute} OldestRecord: #{BqStream::OldestRecord.count}"
-          BqStream.log.info "#{Time.now}: !!!!!!!!!!!!!!!!!!!!!!! ATTRIBUTE FOR #{name} IS NIL !!!!!!!!!!!!!!!!!!!!!!!" if attribute.nil?
-          BqStream::OldestRecord.create(table_name: name, attr: attribute) unless attribute.nil?
+          BqStream.log.info "#{Time.now}: !!!!!!!!!!!!!!!!!!!!!!! ATTRIBUTE FOR #{name} IS BLANK !!!!!!!!!!!!!!!!!!!!!!!" if attribute.blank?
+          BqStream::OldestRecord.create(table_name: name, attr: attribute) unless attribute.blank?
           if BqStream::OldestRecord.count > 176
             r = BqStream::OldestRecord.last
             BqStream.log.info "*****  id: #{r.id}, table_name: #{r.table_name}, attr: #{r.attr}, bq_earliest_update: #{r.bq_earliest_update} *****"
