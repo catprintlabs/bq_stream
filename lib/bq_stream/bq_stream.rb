@@ -52,9 +52,13 @@ module BqStream
     log.info "#{Time.now}: ior old_records.count: #{old_records['rows'].count}"
     log.info "#{Time.now}: ior OldestRecord: #{OldestRecord.count}"
     old_records['rows'].each do |r|
-      rec = OldestRecord.find_or_create_by(table_name: r['f'][0]['v'],
-                                           attr: r['f'][1]['v'])
-      rec.update(bq_earliest_update: Time.at(r['f'][2]['v'].to_f)) unless rec.attr.nil?
+      table = r['f'][0]['v']
+      trait = r['f'][1]['v']
+      log.info "!!!!!!!!!!!!!! TRAIT IN #{table} IS NIL !!!!!!!!!!!!!!" if trait.nil?
+      unless trait.nil?
+        rec = OldestRecord.find_or_create_by(table_name: table, attr: trait)
+        rec.update(bq_earliest_update: Time.at(r['f'][2]['v'].to_f))
+      end
     end if old_records['rows']
     log.info "#{Time.now}: ior end OldestRecord: #{OldestRecord.count}"
   end
