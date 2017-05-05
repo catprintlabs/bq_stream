@@ -22,17 +22,18 @@ module BqStream
     end
 
     def self.update_oldest_records_for(table)
-      BqStream.log.info "!!!!!!!!!! #{Time.now}: update_bq_earliest #{table}"
       oldest_attr_recs = where('table_name = ?', table)
       next_record = next_record_to_write(table.constantize, oldest_attr_recs.pluck(:bq_earliest_update).compact.min)
       oldest_attr_recs.delete_all && return unless next_record
       oldest_attr_recs.each do |oldest_attr_rec|
+        BqStream.log.info "#{Time.now}: Buffer #{table} #{oldest_attr_rec[:attr]} #{oldest_attr_rec[:bq_earliest_update]}"
         oldest_attr_rec.buffer_attribute(next_record)
       end
       oldest_attr_recs.update_all(bq_earliest_update: next_record.updated_at)
     end
 
     def self.next_record_to_write(table, earliest_update)
+      # TODO: created_at, updated_at or something else throughout this
       table.where(
         'created_at >= ? AND created_at < ?',
         BqStream.back_date, earliest_update || Time.now

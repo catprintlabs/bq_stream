@@ -67,7 +67,6 @@ module BqStream
 
   def self.dequeue_items
     logger.info "#{Time.now}: Dequeue Items Started"
-    log.info "#{Time.now}: di start OldestRecord: #{OldestRecord.count}"
     OldestRecord.update_bq_earliest
     create_bq_writer
     records = QueuedItem.all.limit(batch_size)
@@ -78,7 +77,6 @@ module BqStream
     end
     @bq_writer.insert(bq_table_name, data) unless data.empty?
     QueuedItem.delete_all_with_limit
-    log.info "#{Time.now}: di end OldestRecord: #{OldestRecord.count}"
     logger.info "#{Time.now}: Dequeue Items Ended"
   end
 
