@@ -18,15 +18,7 @@ class ActiveRecord::Base
       bq_atr_of_interest.each do |attribute|
         BqStream.log.info "#{Time.now}: Looking for in bqa #{self} | #{attribute} OldestRecord: #{BqStream::OldestRecord.count}"
         record = BqStream::OldestRecord.find_by(table_name: name, attr: attribute)
-        BqStream.log.info "#{Time.now}: found in bqa #{self} | #{attribute} OldestRecord: #{BqStream::OldestRecord.count}" if record
-        unless record
-          BqStream.log.info "#{Time.now}: creating in bqa #{self} | #{attribute} OldestRecord: #{BqStream::OldestRecord.count}"
-          BqStream::OldestRecord.create(table_name: name, attr: attribute)
-          if BqStream::OldestRecord.count > 176
-            r = BqStream::OldestRecord.last
-            BqStream.log.info "*****  id: #{r.id}, table_name: #{r.table_name}, attr: #{r.attr}, bq_earliest_update: #{r.bq_earliest_update} *****"
-          end
-        end
+        BqStream::OldestRecord.create(table_name: name, attr: attribute) unless record
       end if BqStream.back_date
       after_create { queue_default(bq_atr_of_interest) }
       after_save { queue_item(bq_atr_of_interest) }
