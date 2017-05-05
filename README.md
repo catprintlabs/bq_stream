@@ -8,7 +8,12 @@ Add the following lines to your application's Gemfile:
 
 ```ruby
 gem 'bq_stream'
+```
+
+For the servers that dequeue items need the following
+```ruby
 gem 'bigquery', '~>0.9.0'
+gem 'bulk_insert'
 ```
 
 And then execute:

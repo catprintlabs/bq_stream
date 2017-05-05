@@ -54,7 +54,7 @@ module BqStream
     old_records['rows'].each do |r|
       rec = OldestRecord.find_or_create_by(table_name: r['f'][0]['v'],
                                            attr: r['f'][1]['v'])
-      rec.update(bq_earliest_update: Time.at(r['f'][2]['v'].to_f))
+      rec.update(bq_earliest_update: Time.at(r['f'][2]['v'].to_f)) unless rec.attr.nil?
     end if old_records['rows']
     log.info "#{Time.now}: ior end OldestRecord: #{OldestRecord.count}"
   end
