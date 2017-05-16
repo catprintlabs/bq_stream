@@ -16,7 +16,6 @@ class ActiveRecord::Base
           'or :except) and a value as an array, if using :only or :except.'
       end
       bq_atr_of_interest.each do |attribute|
-        BqStream.log.info "#{Time.now}: Looking for in bqa #{self} | #{attribute} OldestRecord: #{BqStream::OldestRecord.count}"
         record = BqStream::OldestRecord.find_by(table_name: name, attr: attribute)
         BqStream::OldestRecord.create(table_name: name, attr: attribute) unless record
       end if BqStream.back_date
