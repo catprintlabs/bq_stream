@@ -11,7 +11,6 @@ module BqStream
     end
 
     def self.create_from_buffer
-      BqStream.log.info "#{Time.now}: Buffer Count: #{buffer.count} (before bulk insert)"
       bulk_insert values: buffer.uniq
     end
 

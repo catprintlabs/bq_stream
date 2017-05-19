@@ -5,6 +5,7 @@ module BqStream
       until BqStream::QueuedItem.available_rows.zero? || table_names.empty?
         table_names.each { |table| update_oldest_records_for(table) }
       end
+      BqStream.log.info "#{Time.now}: Buffer Count: #{BqStream::QueuedItem.buffer.count} (before bulk insert)"
       BqStream::QueuedItem.create_from_buffer
       BqStream.log.info "#{Time.now}: Buffer Count: #{BqStream::QueuedItem.buffer.count} (after bulk insert)"
       BqStream::QueuedItem.buffer.clear
