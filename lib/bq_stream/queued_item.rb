@@ -11,7 +11,9 @@ module BqStream
     end
 
     def self.create_from_buffer
-      bulk_insert values: buffer
+      BqStream.log.info "#{Time.now}: Buffer Count: #{buffer.count} (before bulk insert)"
+      bulk_insert values: buffer.uniq
+      BqStream.log.info "#{Time.now}: Buffer Count: #{buffer.count} (after bulk insert)"
     end
 
     def self.delete_all_with_limit
