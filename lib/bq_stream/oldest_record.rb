@@ -16,7 +16,7 @@ module BqStream
     end
 
     def buffer_attribute(r)
-      BqStream.log.info "#{Time.now}: Table Name: #{table_name} Record ID: #{r.id} Attr: #{attr} New Value: #{r[attr]} Updated: #{r.updated_at}" if table_name == 'Job'
+      BqStream.log.info "#{Time.now}: Table Name: #{table_name} Record ID: #{r.id} Attr: #{attr} New Value: #{r[attr]} Updated: #{r.updated_at}" if table_name == 'Job' and attr == 'friendly_id'
       BqStream::QueuedItem.buffer << { table_name: table_name,
                                        record_id: r.id,
                                        attr: attr,
