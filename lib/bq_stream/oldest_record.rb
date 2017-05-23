@@ -26,7 +26,7 @@ module BqStream
 
     def self.update_oldest_records_for(table)
       oldest_attr_recs = where('table_name = ?', table)
-      next_record = next_record_to_write(table.constantize, oldest_attr_recs.pluck(:bq_earliest_update).compact.min)
+      next_record = next_record_to_write(table.constantize, oldest_attr_recs.map(&:bq_earliest_update).uniq.min)
       oldest_attr_recs.delete_all && return unless next_record
       oldest_attr_recs.each do |oldest_attr_rec|
         oldest_attr_rec.buffer_attribute(next_record)
