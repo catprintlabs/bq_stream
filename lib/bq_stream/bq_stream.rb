@@ -69,6 +69,7 @@ module BqStream
     OldestRecord.update_bq_earliest
     create_bq_writer
     records = QueuedItem.all.limit(batch_size)
+    log.info "#{Time.now}: Records Count: #{records.count}"
     data = records.collect do |i|
       new_val = encode_value(i.new_value) rescue nil
       { table_name: i.table_name, record_id: i.record_id, attr: i.attr,
