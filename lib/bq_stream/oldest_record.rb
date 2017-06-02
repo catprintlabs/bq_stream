@@ -30,7 +30,7 @@ module BqStream
       oldest_attr_recs.each do |oldest_attr_rec|
         oldest_attr_rec.buffer_attribute(next_record)
       end
-      oldest_attr_recs.update_all(bq_earliest_update: next_record.updated_at)
+      oldest_attr_recs.update_all(bq_earliest_update: next_record.created_at)
     end
 
     def self.next_record_to_write(table, earliest_update)
@@ -38,7 +38,7 @@ module BqStream
       table.where(
         'created_at >= ? AND created_at < ?',
         BqStream.back_date, earliest_update || Time.now
-      ).order('updated_at DESC').first # limit(1)
+      ).order('updated_at DESC').first
     end
 
     def self.build_table
