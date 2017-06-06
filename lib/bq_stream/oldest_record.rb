@@ -38,7 +38,7 @@ module BqStream
       table.where(
         'created_at >= ? AND created_at < ?',
         BqStream.back_date, earliest_update || Time.now
-      ).order('updated_at DESC').first
+      ).order('created_at DESC').first
     end
 
     def self.build_table
