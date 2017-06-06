@@ -1,4 +1,4 @@
-require 'active_record_base'
+require 'activerecordbase'
 
 unless RUBY_ENGINE == 'opal'
   require 'active_record'
