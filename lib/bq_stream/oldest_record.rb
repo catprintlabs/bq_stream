@@ -15,7 +15,6 @@ module BqStream
     end
 
     def buffer_attribute(r)
-      BqStream.log.info "#{Time.now}: Table Name: #{table_name} Record ID: #{r.id} Attr: #{attr} New Value: #{r[attr]} Updated: #{r.updated_at}" if table_name == 'Job' && attr == 'friendly_id'
       BqStream::QueuedItem.buffer << { table_name: table_name,
                                        record_id: r.id,
                                        attr: attr,
@@ -30,6 +29,7 @@ module BqStream
       oldest_attr_recs.each do |oldest_attr_rec|
         oldest_attr_rec.buffer_attribute(next_record)
       end
+      BqStream.log.info "#{Time.now}: Table Name: #{table_name} Bq Earliest Update: #{next_record.created_at}"
       oldest_attr_recs.update_all(bq_earliest_update: next_record.created_at)
     end
 
