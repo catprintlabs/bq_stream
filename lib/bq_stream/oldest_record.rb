@@ -19,7 +19,7 @@ module BqStream
                                        record_id: r.id,
                                        attr: attr,
                                        new_value: r[attr],
-                                       updated_at: r.updated_at }
+                                       updated_at: r.created_at }
     end
 
     def self.update_oldest_records_for(table)
