@@ -29,7 +29,7 @@ module BqStream
       oldest_attr_recs.each do |oldest_attr_rec|
         oldest_attr_rec.buffer_attribute(next_record)
       end
-      BqStream.log.info "#{Time.now}: Table Name: #{table_name} Bq Earliest Update: #{next_record.created_at}"
+      BqStream.log.info "#{Time.now}: Table Name: #{table} Bq Earliest Update: #{next_record.created_at}"
       oldest_attr_recs.update_all(bq_earliest_update: next_record.created_at)
     end
 
