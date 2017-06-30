@@ -67,16 +67,23 @@ module BqStream
   def self.dequeue_items
     logger.info "#{Time.now}: Dequeue Items Started"
     OldestRecord.update_bq_earliest
+    logger.info "#{Time.now}: after OldestRecord.update_bq_earliest"
     create_bq_writer
     records = QueuedItem.all.limit(batch_size)
     log.info "#{Time.now}: Records Count: #{records.count}"
+    logger.info "#{Time.now}: Setting up data Started"
     data = records.collect do |i|
       new_val = encode_value(i.new_value) rescue nil
       { table_name: i.table_name, record_id: i.record_id, attr: i.attr,
         new_value: new_val ? new_val : i.new_value, updated_at: i.updated_at }
     end
+    logger.info "#{Time.now}: Setting up data Ended"
+    logger.info "#{Time.now}: @bq_writer.insert Started"
     @bq_writer.insert(bq_table_name, data) unless data.empty?
+    logger.info "#{Time.now}: @bq_writer.insert Ended"
+    logger.info "#{Time.now}: QueuedItem.delete_all_with_limit Started"
     QueuedItem.delete_all_with_limit
+    logger.info "#{Time.now}: QueuedItem.delete_all_with_limit Ended"
     logger.info "#{Time.now}: Dequeue Items Ended"
   end
 
