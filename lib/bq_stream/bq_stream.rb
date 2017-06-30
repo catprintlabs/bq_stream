@@ -65,26 +65,27 @@ module BqStream
   end
 
   def self.dequeue_items
-    logger.info "#{Time.now}: Dequeue Items Started"
+    log_code = rand(2**256).to_s(36)[0..7]
+    logger.info "#{Time.now}: Dequeue Items Started #{log_code}"
     OldestRecord.update_bq_earliest
-    logger.info "#{Time.now}: after OldestRecord.update_bq_earliest"
+    logger.info "#{Time.now}: after OldestRecord.update_bq_earliest #{log_code}"
     create_bq_writer
     records = QueuedItem.all.limit(batch_size)
     log.info "#{Time.now}: Records Count: #{records.count}"
-    logger.info "#{Time.now}: Setting up data Started"
+    logger.info "#{Time.now}: Setting up data Started #{log_code}"
     data = records.collect do |i|
       new_val = encode_value(i.new_value) rescue nil
       { table_name: i.table_name, record_id: i.record_id, attr: i.attr,
         new_value: new_val ? new_val : i.new_value, updated_at: i.updated_at }
     end
-    logger.info "#{Time.now}: Setting up data Ended"
-    logger.info "#{Time.now}: @bq_writer.insert Started"
+    logger.info "#{Time.now}: Setting up data Ended #{log_code}"
+    logger.info "#{Time.now}: @bq_writer.insert Started #{log_code}"
     @bq_writer.insert(bq_table_name, data) unless data.empty?
-    logger.info "#{Time.now}: @bq_writer.insert Ended"
-    logger.info "#{Time.now}: QueuedItem.delete_all_with_limit Started"
+    logger.info "#{Time.now}: @bq_writer.insert Ended #{log_code}"
+    logger.info "#{Time.now}: QueuedItem.delete_all_with_limit Started #{log_code}"
     QueuedItem.delete_all_with_limit
-    logger.info "#{Time.now}: QueuedItem.delete_all_with_limit Ended"
-    logger.info "#{Time.now}: Dequeue Items Ended"
+    logger.info "#{Time.now}: QueuedItem.delete_all_with_limit Ended #{log_code}"
+    logger.info "#{Time.now}: Dequeue Items Ended #{log_code}"
   end
 
   def self.create_bq_dataset
