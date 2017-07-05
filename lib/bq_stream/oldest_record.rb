@@ -3,6 +3,8 @@ module BqStream
     def self.update_bq_earliest
       BqStream::QueuedItem.buffer.clear
       BqStream.log.info "#{Time.now}: Queued Item Count: #{BqStream::QueuedItem.count}"
+      BqStream.log.info "#{Time.now}: Available Rows zero?: #{BqStream::QueuedItem.available_rows.zero?}"
+      BqStream.log.info "#{Time.now}: Table Names Empty: #{table_names.empty?}"
       until BqStream::QueuedItem.available_rows.zero? || table_names.empty?
         table_names.each { |table| update_oldest_records_for(table) }
       end
