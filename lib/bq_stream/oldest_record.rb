@@ -1,10 +1,11 @@
 module BqStream
   class OldestRecord < ActiveRecord::Base
     def self.update_bq_earliest
+      logging_code = rand(2**256).to_s(36)[0..3]
       BqStream::QueuedItem.buffer.clear
-      BqStream.log.info "#{Time.now}: Queued Item Count: #{BqStream::QueuedItem.count}"
-      BqStream.log.info "#{Time.now}: Available Rows zero?: #{BqStream::QueuedItem.available_rows.zero?}"
-      BqStream.log.info "#{Time.now}: Table Names Empty: #{table_names.empty?}"
+      BqStream.logger.info "#{Time.now}: Queued Item Count: #{BqStream::QueuedItem.count} #{logging_code}"
+      BqStream.logger.info "#{Time.now}: Available Rows zero?: #{BqStream::QueuedItem.available_rows.zero?} #{logging_code}"
+      BqStream.logger.info "#{Time.now}: Table Names Empty: #{table_names.empty?} #{logging_code}"
       until BqStream::QueuedItem.available_rows.zero? || table_names.empty?
         table_names.each { |table| update_oldest_records_for(table) }
       end
