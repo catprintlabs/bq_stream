@@ -71,7 +71,7 @@ module BqStream
     logger.info "#{Time.now}: after OldestRecord.update_bq_earliest #{log_code}"
     create_bq_writer
     records = QueuedItem.all.limit(batch_size)
-    logger.info "#{Time.now}: Records Count: #{records.count}"
+    logger.info "#{Time.now}: Records Count: #{records.count} #{log_code}"
     logger.info "#{Time.now}: Setting up data Started #{log_code}"
     data = records.collect do |i|
       new_val = encode_value(i.new_value) rescue nil

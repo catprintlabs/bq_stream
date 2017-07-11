@@ -6,6 +6,7 @@ module BqStream
       BqStream.logger.info "#{Time.now}: Queued Item Count: #{BqStream::QueuedItem.count} #{logging_code}"
       BqStream.logger.info "#{Time.now}: Available Rows zero?: #{BqStream::QueuedItem.available_rows.zero?} #{logging_code}"
       BqStream.logger.info "#{Time.now}: Table Names Empty: #{table_names.empty?} #{logging_code}"
+      BqStream.logger.info "#{Time.now}: Table Names Count: #{table_names.count} #{logging_code}"
       until BqStream::QueuedItem.available_rows.zero? || table_names.empty?
         table_names.each { |table| update_oldest_records_for(table) }
       end
@@ -26,16 +27,22 @@ module BqStream
     end
 
     def self.update_oldest_records_for(table)
+      BqStream.logger.info "#{Time.now}: Update Oldest Record #{logging_code}"
+      BqStream.logger.info "#{Time.now}: Table #{table} #{logging_code}"
       oldest_attr_recs = where('table_name = ?', table)
+      BqStream.logger.info "#{Time.now}: oldest_attr_recs count #{oldest_attr_recs.count} #{logging_code}"
       next_record = next_record_to_write(table.constantize, oldest_attr_recs.map(&:bq_earliest_update).uniq.min)
+      BqStream.logger.info "#{Time.now}: oldest_attr_recs #{next_record} #{logging_code}"
       oldest_attr_recs.delete_all && return unless next_record
       oldest_attr_recs.each do |oldest_attr_rec|
         oldest_attr_rec.buffer_attribute(next_record)
       end
+      BqStream.logger.info "#{Time.now}: Updating All #{logging_code}"
       oldest_attr_recs.update_all(bq_earliest_update: next_record.created_at)
     end
 
     def self.next_record_to_write(table, earliest_update)
+      BqStream.logger.info "#{Time.now}: Next Record to Write #{logging_code}"
       table.where(
         'created_at >= ? AND created_at < ?',
         BqStream.back_date, earliest_update || Time.now
