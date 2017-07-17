@@ -25,7 +25,7 @@ module BqStream
 
     def self.update_oldest_records_for(table)
       oldest_attr_recs = where('table_name = ?', table)
-      BqStream.logger.info "#{Time.now}: oldest_attr_recs count #{oldest_attr_recs.count}"
+      BqStream.logger.info "#{Time.now}: Table #{draft} count #{oldest_attr_recs.count}"
       next_record = next_record_to_write(table.constantize, oldest_attr_recs.map(&:bq_earliest_update).uniq.min)
       BqStream.logger.info "#{Time.now}: oldest_attr_recs #{next_record.id rescue nil}"
       oldest_attr_recs.delete_all && return unless next_record
