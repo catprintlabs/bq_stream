@@ -1,9 +1,8 @@
 module BqStream
   class OldestRecord < ActiveRecord::Base
     def self.update_bq_earliest
-      logging_code = rand(2**256).to_s(36)[0..3]
       BqStream::QueuedItem.buffer.clear
-      BqStream.logger.info "#{Time.now}: Table Names Empty: #{table_names.empty?} #{logging_code}" # seen each time
+      BqStream.logger.info "#{Time.now}: Table Names Empty: #{table_names.empty?}" # seen each time
       until BqStream::QueuedItem.available_rows.zero? || table_names.empty?
         table_names.each { |table| update_oldest_records_for(table) }
       end
@@ -28,9 +27,12 @@ module BqStream
       oldest_attr_recs = where('table_name = ?', table)
       BqStream.logger.info "#{Time.now}: Table #{table} count #{oldest_attr_recs.count}"
       next_record = next_record_to_write(table.constantize, oldest_attr_recs.map(&:bq_earliest_update).uniq.min)
+      BqStream.logger.info "#{Time.now}: !!! Next Record: #{next_record} !!!"
       if next_record
+        BqStream.logger.info "#{Time.now}: !!! IF !!!"
         BqStream.logger.info "#{Time.now}: oldest_attr_recs id #{next_record.id rescue nil}"
       else
+        BqStream.logger.info "#{Time.now}: !!! ELSE !!!"
         BqStream.logger.info "#{Time.now}: >>>>> Update Oldest Records For #{table} Ending <<<<<"
       end
       oldest_attr_recs.delete_all && return unless next_record
