@@ -45,6 +45,7 @@ module BqStream
   end
 
   def self.initialize_old_records
+    logger.info "#{Time.now}: $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$ Start Initialize Old Records $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$"
     old_records = @bq_writer.query('SELECT table_name, attr, min(updated_at) '\
                                    'as bq_earliest_update FROM '\
                                    "[#{project_id}:#{dataset}.#{bq_table_name}] "\
@@ -57,6 +58,7 @@ module BqStream
         rec.update(bq_earliest_update: Time.at(r['f'][2]['v'].to_f))
       end
     end if old_records['rows']
+    logger.info "#{Time.now}: $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$ End Initialize Old Records $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$"
   end
 
   def self.encode_value(value)
