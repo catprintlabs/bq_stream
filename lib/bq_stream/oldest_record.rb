@@ -25,10 +25,10 @@ module BqStream
     def self.update_oldest_records_for(table)
       BqStream.logger.info "#{Time.now}: >>>>> Update Oldest Records For #{table} Starting <<<<<"
       oldest_attr_recs = where('table_name = ?', table)
-      earliest_update = oldest_attr_recs.map(&:bq_earliest_update).uniq.min rescue nil
+      earliest_update = oldest_attr_recs.map(&:bq_earliest_update).uniq.min
       BqStream.logger.info "#{Time.now}: Table #{table} count #{oldest_attr_recs.count}"
       next_record = next_record_to_write(table.constantize, earliest_update)
-      BqStream.logger.info "#{Time.now}: $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$ Earliest Time #{earliest_updaten} Blank? #{earliest_update.blank?} $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$"
+      BqStream.logger.info "#{Time.now}: $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$ Earliest Time #{earliest_update} Blank? #{earliest_update.blank?} $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$"
       BqStream.logger.info "#{Time.now}: !!! Next Record Nil: #{next_record.nil?} !!!"
       if next_record
         BqStream.logger.info "#{Time.now}: oldest_attr_recs id #{next_record.id rescue nil}"
