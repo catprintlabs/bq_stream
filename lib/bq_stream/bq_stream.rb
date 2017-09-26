@@ -45,7 +45,7 @@ module BqStream
   end
 
   def self.initialize_old_records
-    logger.info "#{Time.now}: $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$ Start Initialize Old Records $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$"
+    # logger.info "#{Time.now}: $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$ Start Initialize Old Records $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$"
     old_records = @bq_writer.query('SELECT table_name, attr, min(updated_at) '\
                                    'as bq_earliest_update FROM '\
                                    "[#{project_id}:#{dataset}.#{bq_table_name}] "\
@@ -58,7 +58,7 @@ module BqStream
         rec.update(bq_earliest_update: Time.at(r['f'][2]['v'].to_f))
       end
     end if old_records['rows']
-    logger.info "#{Time.now}: $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$ End Initialize Old Records $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$"
+    # logger.info "#{Time.now}: $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$ End Initialize Old Records $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$"
   end
 
   def self.encode_value(value)
@@ -68,11 +68,11 @@ module BqStream
 
   def self.dequeue_items
     log_code = rand(2**256).to_s(36)[0..7]
-    logger.info "#{Time.now}: ***** Dequeue Items Started ***** #{log_code}"
+    # logger.info "#{Time.now}: ***** Dequeue Items Started ***** #{log_code}"
     OldestRecord.update_bq_earliest
     create_bq_writer
     records = QueuedItem.all.limit(batch_size)
-    logger.info "#{Time.now}: Records Count: #{records.count} #{log_code}"
+    # logger.info "#{Time.now}: Records Count: #{records.count} #{log_code}"
     data = records.collect do |i|
       new_val = encode_value(i.new_value) rescue nil
       { table_name: i.table_name, record_id: i.record_id, attr: i.attr,
@@ -80,7 +80,7 @@ module BqStream
     end
     @bq_writer.insert(bq_table_name, data) unless data.empty?
     QueuedItem.delete_all_with_limit
-    logger.info "#{Time.now}: ***** Dequeue Items Ended ***** #{log_code}"
+    # logger.info "#{Time.now}: ***** Dequeue Items Ended ***** #{log_code}"
   end
 
   def self.create_bq_dataset
