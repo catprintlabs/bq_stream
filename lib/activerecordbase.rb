@@ -28,12 +28,14 @@ class ActiveRecord::Base
   end
 
   def queue_default(attributes_of_interest)
+    BqStream.logger.info "#{Time.now}: |Queue Default|"
     items = self.class.columns_hash.collect do |k, v|
       if attributes_of_interest.include?(k.to_sym) && !v.default.nil? && changes.exclude?(k)
         { k => v.default }
       end
     end.compact
     items.each do |i|
+      BqStream.logger.info "#{Time.now}: Record: #{id} | Table: #{self.class} | Attr: #{i.keys.first} | Value: #{i[i.keys.first]}"
       BqStream::QueuedItem.create(table_name: self.class.to_s,
                                   record_id: id, attr: i.keys.first.to_sym,
                                   new_value: i[i.keys.first].to_s)
@@ -41,8 +43,10 @@ class ActiveRecord::Base
   end
 
   def queue_item(attributes_of_interest)
+    BqStream.logger.info "#{Time.now}: |Queue Item|"
     changes.each do |k, v|
       if attributes_of_interest.include?(k.to_sym)
+        BqStream.logger.info "#{Time.now}: Record: #{id} | Table: #{self.class} | Attr: #{k} | Value: #{v[1]}"
         BqStream::QueuedItem.create(table_name: self.class.to_s,
                                     record_id: id, attr: k,
                                     new_value: v[1].to_s)
