@@ -35,7 +35,7 @@ class ActiveRecord::Base
     end.compact
     BqStream.logger.info "#{Time.now}: |Queue Default|" if items.present?
     items.each do |i|
-      BqStream.logger.info "#{Time.now}: Record: #{id} | Table: #{self.class} | Attr: #{i.keys.first} | Value: #{i[i.keys.first]}"
+      BqStream.logger.info "#{Time.now}: Record: #{id} | Table: #{self.class} | Attr: #{i.keys.first} | Value: #{i[i.keys.first]}" if self.class.to_s == 'Order'
       BqStream::QueuedItem.create(table_name: self.class.to_s,
                                   record_id: id, attr: i.keys.first.to_sym,
                                   new_value: i[i.keys.first].to_s)
@@ -46,7 +46,7 @@ class ActiveRecord::Base
     BqStream.logger.info "#{Time.now}: |Queue Item|" if changes.present?
     changes.each do |k, v|
       if attributes_of_interest.include?(k.to_sym)
-        BqStream.logger.info "#{Time.now}: Record: #{id} | Table: #{self.class} | Attr: #{k} | Value: #{v[1]}"
+        BqStream.logger.info "#{Time.now}: Record: #{id} | Table: #{self.class} | Attr: #{k} | Value: #{v[1]}" if self.class.to_s == 'Order'
         BqStream::QueuedItem.create(table_name: self.class.to_s,
                                     record_id: id, attr: k,
                                     new_value: v[1].to_s)
