@@ -67,7 +67,7 @@ module BqStream
   end
 
   def self.dequeue_items
-    log_code = rand(2**256).to_s(36)[0..7]
+    # log_code = rand(2**256).to_s(36)[0..7]
     # logger.info "#{Time.now}: ***** Dequeue Items Started ***** #{log_code}"
     OldestRecord.update_bq_earliest
     create_bq_writer
