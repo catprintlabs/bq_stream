@@ -1,40 +1,4 @@
 class ActiveRecord::Base
-  # alias _previous_run_commit_callbacks _run_commit_callbacks
-  # alias _previous_run_rollback_callbacks _run_rollback_callbacks
-  #
-  # def _run_commit_callbacks
-  #   _previous_run_commit_callbacks
-  # ensure
-  #   @transaction_changed_attributes = nil
-  # end
-  #
-  # def _run_rollback_callbacks
-  #   _previous_run_rollback_callbacks
-  # ensure
-  #   @transaction_changed_attributes = nil
-  # end
-  #
-  # def transaction_changed_attributes
-  #   @transaction_changed_attributes ||= HashWithIndifferentAccess.new
-  # end
-  #
-  # method_name = if ActiveRecord.gem_version >= Gem::Version.new("5.2.0.beta1")
-  #   "_write_attribute"
-  # else
-  #   "write_attribute"
-  # end
-  # alias_method :_previous_write_attribute, method_name.to_sym
-  #
-  # define_method(method_name) do |attr_name, value|
-  #   attr_name = attr_name.to_s
-  #   old_value = read_attribute(attr_name)
-  #   ret = _previous_write_attribute(attr_name, value)
-  #   unless transaction_changed_attributes.key?(attr_name) || value == old_value
-  #     transaction_changed_attributes[attr_name] = old_value
-  #   end
-  #   ret
-  # end
-
   def self.bq_attributes(opts = {})
     unless RUBY_ENGINE == 'opal'
       if opts == :all

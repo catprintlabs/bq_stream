@@ -2,7 +2,6 @@ module BqStream
   class OldestRecord < ActiveRecord::Base
     def self.update_bq_earliest
       BqStream::QueuedItem.buffer.clear
-      # BqStream.logger.info "#{Time.now}: Table Names Empty: #{table_names.empty?}" # seen each time
       until BqStream::QueuedItem.available_rows.zero? || table_names.empty?
         table_names.each { |table| update_oldest_records_for(table) }
       end
