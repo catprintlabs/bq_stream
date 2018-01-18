@@ -15,7 +15,7 @@ end
 # Use the requires below for testing
 
 # require 'active_record'
-# require 'active_record_base'
+# require 'activerecordbase'
 # require 'dotenv'
 # Dotenv.load
 # require 'big_query' # development dependency
