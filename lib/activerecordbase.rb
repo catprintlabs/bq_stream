@@ -67,16 +67,7 @@ class ActiveRecord::Base
   end
 
   def queue_create(attributes_of_interest)
-    prev_changes = []
-    previous_changes.each_key do |key|
-      prev_changes << key
-    end
-
     attributes.each do |k, v|
-      unless prev_changes.include?(k) || v.nil?
-        BqStream.log.info "#{Time.now}: #{self.class} attribute #{k} is "\
-          'not nil in attributes and not included in previous changes'
-      end
       next unless attributes_of_interest.include?(k.to_sym) && !v.nil?
       BqStream::QueuedItem.create(table_name: self.class.to_s,
                                   record_id: id, attr: k,
