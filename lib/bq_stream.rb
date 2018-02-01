@@ -24,3 +24,4 @@ end
 # require 'bq_stream/queued_item'
 # require 'bq_stream/oldest_record'
 # require 'bq_stream/bq_stream'
+# require 'bulk_insert'
