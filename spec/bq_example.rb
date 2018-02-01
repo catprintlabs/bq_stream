@@ -49,9 +49,9 @@ describe BqStream do
         end
       end
 
-      class TableForth < ActiveRecord::Base
+      class TableFourth < ActiveRecord::Base
         def self.build_table
-          connection.create_table :table_forths, force: true do |t|
+          connection.create_table :table_fourths, force: true do |t|
             t.string :name
             t.string :listing
             t.integer :level
@@ -63,7 +63,7 @@ describe BqStream do
       TableFirst.build_table
       TableSecond.build_table
       TableThird.build_table
-      TableForth.build_table
+      TableFourth.build_table
     end
 
     before(:each) do
@@ -79,7 +79,7 @@ describe BqStream do
         TableThird.create(name: 'third record',
                           notes: 'remember',
                           order: 22)
-      TableForth.create(name: 'forth record',
+      TableFourth.create(name: 'fourth record',
                         listing: 'important',
                         level: 61)
       @first_record.update(required: false)
