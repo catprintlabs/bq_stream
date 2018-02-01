@@ -1,68 +1,8 @@
 class ActiveRecord::Base
-  # class << self
-  #   alias before_bq_stream_after_commit after_commit
-  #   def after_commit(*args, &block)
-  #     before_bq_stream_after_commit(*args, &block)
-  #     unless method_defined? :before_bq_stream_run_commit_callbacks
-  #       binding.pry
-  #       alias before_bq_stream_run_commit_callbacks _run_commit_callbacks
-  #       alias before_bq_stream_run_rollback_callbacks _run_rollback_callbacks
-  #       define_method :_run_commit_callbacks do
-  #         begin
-  #           before_bq_stream_run_commit_callbacks
-  #         ensure
-  #           @transaction_changed_attributes = nil
-  #         end
-  #       end
-  #       define_method :_run_rollback_callbacks do
-  #         begin
-  #           before_bq_stream_run_rollback_callbacks
-  #         ensure
-  #           @transaction_changed_attributes = nil
-  #         end
-  #       end
-  #     end
-  #   end
-  # end
-
-  #   def _run_commit_callbacks
-  #     super
-  #   ensure
-  #     @transaction_changed_attributes = nil
-  #   end
-  #
-  #   def _run_rollback_callbacks
-  #     super
-  #   ensure
-  #     @transaction_changed_attributes = nil
-  #   end
-
-  # class << self
-  #   alias before_bq_stream_inherited inherited
-  #   def inherited(child)
-  #
-  #     before_bq_stream_inherited(child)
-  #     child.class_eval do
-  #       puts "++++++++++++++++++++++++++++++ defining #{child}#write_attribute ++++++++++++++++++++++++++++++++++++++++++++++++++"
-  #       define_method(:write_attribute) do |attr_name, value|
-  #         attr_name = attr_name.to_s
-  #         old_value = read_attribute(attr_name)
-  #         ret = super(attr_name, value)
-  #         puts "@@@@@@@@@@@@@@@@@@@@@@@@@@@@ #{self.object_id} | #{transaction_changed_attributes.length}| #{attr_name} | #{value} @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@" if self.class == Order
-  #         unless transaction_changed_attributes.key?(attr_name) || value == old_value
-  #           transaction_changed_attributes[attr_name] = old_value
-  #         end
-  #         ret
-  #       end
-  #     end
-  #   end
-  # end
-
   def transaction_changed_attributes
     @transaction_changed_attributes ||= HashWithIndifferentAccess.new
   end
 
-###############
   def self.bq_attributes(opts = {})
     unless RUBY_ENGINE == 'opal'
       if opts == :all
@@ -79,35 +19,35 @@ class ActiveRecord::Base
         raise 'You must declare an opts hash with a key of :all, :only '\
           'or :except) and a value as an array, if using :only or :except.'
       end
-      bq_atr_of_interest.each do |attribute|
-        record = BqStream::OldestRecord.find_by(table_name: name, attr: attribute)
-        BqStream::OldestRecord.create(table_name: name, attr: attribute) unless record
-      end if BqStream.back_date
-
-      # after_commit on: [:create] do
-      #   queue_create(bq_atr_of_interest)
-      #   @transaction_changed_attributes = nil
-      # end
-
-      after_save do
-        binding.pry if self.class == Order
-        changes.each do |k, v|
-          transaction_changed_attributes[k] = v[1]
-          puts "===================== #{self.class} | #{k} | #{v} | #{v[1]}"
+      if BqStream.back_date
+        bq_atr_of_interest.each do |attribute|
+          record = BqStream::OldestRecord.find_by(table_name: name, attr: attribute)
+          BqStream::OldestRecord.create(table_name: name, attr: attribute) unless record
         end
       end
 
-      after_commit on: [:create, :update] do
-        if self.class == Order
-          puts "&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&& #{self.object_id} | #{transaction_changed_attributes.length} &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&"
+      after_save do
+        changes.each do |k, v|
+          transaction_changed_attributes[k] = v[1]
         end
+      end
+
+      after_commit on: [:create] do
+        queue_create(bq_atr_of_interest)
+        @transaction_changed_attributes = nil
+      end
+
+      after_commit on: [:update] do
+        BqStream.logger.info "#{Time.now}: AFTER COMMIT ON UPDATE <<<<<-------"
         queue_update(bq_atr_of_interest)
         @transaction_changed_attributes = nil
       end
+
       after_commit on: [:destroy] do
         queue_destroy
         @transaction_changed_attributes = nil
       end
+
       after_rollback do
         @transaction_changed_attributes = nil
       end
