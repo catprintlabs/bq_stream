@@ -38,7 +38,6 @@ class ActiveRecord::Base
       end
 
       after_commit on: [:update] do
-        BqStream.logger.info "#{Time.now}: AFTER COMMIT ON UPDATE <<<<<-------"
         queue_update(bq_atr_of_interest)
         @transaction_changed_attributes = nil
       end
