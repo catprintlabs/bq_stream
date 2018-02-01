@@ -52,7 +52,7 @@ module BqStream
     end
 
     def self.build_table
-      return if connection.tables.include?(BqStream.oldest_record_table_name) && find_by(table_name: '! revision !', attr: `cat #{Rails.root}/REVISION`)
+      return if connection.tables.include?(BqStream.oldest_record_table_name) && find_by(table_name: '! revision !', attr: `cat #{File.expand_path ''}/REVISION`)
       self.table_name = BqStream.oldest_record_table_name
       connection.create_table(table_name, force: true) do |t|
         t.string   :table_name
@@ -60,7 +60,7 @@ module BqStream
         t.datetime :bq_earliest_update
       end
 
-      create(table_name: '! revision !', attr: `cat #{Rails.root}/REVISION`)
+        create(table_name: '! revision !', attr: `cat #{File.expand_path ''}/REVISION`)
     end
 
     do_not_synchronize rescue nil # if Hyperloop is running
