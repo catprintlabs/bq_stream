@@ -43,7 +43,7 @@ Run `PRODUCTION=false rake spec` to run the tests.
 
 There is also a test with a live connection to BigQuery that be called by using:
 
-    $ PRODUCTION=false rspec spec/bq_example.rb
+    $ TEST=true rspec spec/bq_example.rb
 
 Before live testing you should be sure to have created an `.env` file in the root directory with the following Google BigQuery credentials:
 

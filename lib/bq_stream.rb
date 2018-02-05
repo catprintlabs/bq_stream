@@ -1,7 +1,7 @@
 require 'dotenv'
 Dotenv.load
 
-if ENV['PRODUCTION'] == 'false'
+if ENV['TEST']
   require 'active_record'
   require 'activerecordbase'
   require 'big_query' # development dependency
