@@ -22,26 +22,14 @@ module BqStream
     end
 
     def self.update_oldest_records_for(table)
-      # BqStream.logger.info "#{Time.now}: >>>>> Update Oldest Records For #{table} Starting <<<<<"
       oldest_attr_recs = where('table_name = ?', table)
       earliest_update = oldest_attr_recs.map(&:bq_earliest_update).uniq.min # TODO: could this ever be different
-      # BqStream.logger.info "#{Time.now}: Table #{table} count #{oldest_attr_recs.count}"
       next_record = next_record_to_write(table.constantize, earliest_update)
-      # BqStream.logger.info "#{Time.now}: $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$ Earliest Time #{earliest_update} Blank? #{earliest_update.blank?} $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$"
-      # if next_record
-      #   BqStream.logger.info "#{Time.now}: oldest_attr_recs id #{next_record.id rescue nil}"
-      # else
-      #   BqStream.logger.info "#{Time.now}: >>>>> ******* Deleting & Returning *******"
-      #   BqStream.logger.info "#{Time.now}: >>>>> ******* Update Oldest Records For #{table} Ending *******"
-      # end
-      # BqStream.logger.info "#{Time.now}: $$$$$$$$$$$ Delete & Return unless this is true => #{ next_record && !earliest_update.blank? } $$$$$$$$$$$"
       oldest_attr_recs.delete_all && return unless next_record && !earliest_update.blank?
       oldest_attr_recs.each do |oldest_attr_rec|
         oldest_attr_rec.buffer_attribute(next_record)
       end
       oldest_attr_recs.update_all(bq_earliest_update: next_record.created_at)
-      # BqStream.logger.info "#{Time.now}: >>>>> #{BqStream::QueuedItem.buffer.count}  <<<<<"
-      # BqStream.logger.info "#{Time.now}: >>>>> Update Oldest Records For #{table} Ending <<<<<"
     end
 
     def self.next_record_to_write(table, earliest_update)
