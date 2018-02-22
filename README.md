@@ -32,18 +32,18 @@ TODO: Write usage instructions here
 
 After checking out the repo, run `bin/setup` to install dependencies.
 
-You can also run `TEST=true bin/console` for an interactive prompt that will allow you to experiment.
+You can also run `bin/console` for an interactive prompt that will allow you to experiment.
 
 To install this gem onto your local machine, run `bundle exec rake install`.
 
 ## Testing
 
 An RSpec test suite is available to ensure proper functionality.
-Run `TEST=true rake spec` to run the tests.
+Run `rake spec` to run the tests.
 
 There is also a test with a live connection to BigQuery that be called by using:
 
-    $ TEST=true rspec spec/bq_example.rb
+    $ rspec spec/bq_example.rb
 
 Before live testing you should be sure to have created an `.env` file in the root directory with the following Google BigQuery credentials:
 
