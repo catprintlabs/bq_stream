@@ -100,9 +100,9 @@ module BqStream
       bq_gather_and_compare(klass, dataset, table, qty)
     end
 
-    def database_check(klass, attr, dataset, table, qty = nil, start_date = Time.current.beginning_of_week - 1.week, end_date =  Time.current.end_of_week - 1.week)
+    def database_check(klass, date_attr, dataset, table, qty = nil, start_date = Time.current.beginning_of_week - 1.week, end_date =  Time.current.end_of_week - 1.week)
       init_check(dataset)
-      query_db_records(klass.classify.constantize, attr, qty, start_date, end_date)
+      query_db_records(klass.classify.constantize, date_attr, qty, start_date, end_date)
       collect_bq_records(klass, dataset, table, @db_ids)
       bq_gather_and_compare(klass, dataset, table, qty)
     end
