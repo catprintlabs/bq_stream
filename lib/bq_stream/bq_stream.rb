@@ -66,11 +66,13 @@ module BqStream
     end
 
     def dequeue_items
+      start_after_id = QueuedItem.where(sent_to_bq: true).last.id # added for testing TODO: update after test
       log_code = rand(2**256).to_s(36)[0..7]
       log(:info, "#{Time.now}: ***** Dequeue Items Started ***** #{log_code}")
       OldestRecord.update_bq_earliest
       create_bq_writer
-      records = QueuedItem.all.limit(batch_size)
+      # records = QueuedItem.all.limit(batch_size) # removing for testing TODO: update after test
+      records = QueuedItem.where('id > ?', start_after_id).limit(batch_size)
       log(:info, "#{Time.now}: Records Count: #{records.count} #{log_code}")
       data = records.collect do |i|
         new_val = encode_value(i.new_value) rescue nil
@@ -78,7 +80,8 @@ module BqStream
           new_value: new_val ? new_val : i.new_value, updated_at: i.updated_at }
       end
       @bq_writer.insert(bq_table_name, data) unless data.empty?
-      QueuedItem.delete_all_with_limit
+      records.each { |r| r.update(sent_to_bq: true) } # added for testing TODO: update after test
+      # QueuedItem.delete_all_with_limit # removing delete for testing TODO: reinstate after test
       log(:info, "#{Time.now}: ***** Dequeue Items Ended ***** #{log_code}")
     end
 
@@ -96,12 +99,12 @@ module BqStream
     end
 
     def big_query_check(klass, dataset, table, qty)
-      init_check(dataset)
+      create_bq_writer
       bq_gather_and_compare(klass, dataset, table, qty)
     end
 
     def database_check(klass, date_attr, dataset, table, qty = nil, start_date = Time.current.beginning_of_week - 1.week, end_date =  Time.current.end_of_week - 1.week)
-      init_check(dataset)
+      create_bq_writer
       query_db_records(klass.classify.constantize, date_attr, qty, start_date, end_date)
       collect_bq_records(klass, dataset, table, @db_ids)
       bq_gather_and_compare(klass, dataset, table, qty)
@@ -115,21 +118,10 @@ module BqStream
       @results.each { |result| puts result }
     end
 
-    def init_check(dataset)
-      opts = {}
-      opts['client_id'] = ENV['CLIENT_ID']
-      opts['service_email'] = ENV['SERVICE_EMAIL']
-      opts['key'] = ENV['KEY']
-      opts['project_id'] = ENV['PROJECT_ID']
-      opts['dataset'] = dataset
-
-      @bq = BigQuery::Client.new(opts)
-    end
-
     def query_bq_records(qty, dataset, table)
       @schema = []
-      total_rows = @bq.query("SELECT count(*) FROM [#{dataset}.#{table}]")['rows'].first['f'].first['v']
-      @bq_query ||= @bq.query("SELECT * FROM [#{dataset}.#{table}] WHERE RAND() < #{qty * 2}/#{total_rows} LIMIT #{qty}")
+      total_rows = @bq_writer.query("SELECT count(*) FROM [#{dataset}.#{table}]")['rows'].first['f'].first['v']
+      @bq_query ||= @bq_writer.query("SELECT * FROM [#{dataset}.#{table}] WHERE RAND() < #{qty * 2}/#{total_rows} LIMIT #{qty}")
 
       @bq_query['schema']['fields'].each do |f|
         @schema << f['name']
@@ -150,7 +142,7 @@ module BqStream
     end
 
     def collect_bq_records(klass, dataset, table, ids)
-      @bq_query = @bq.query("SELECT * FROM [#{dataset}.#{table}] WHERE #{klass}_record_id IN (#{ids.to_s.gsub(/\[|\]/, '')})")
+      @bq_query = @bq_writer.query("SELECT * FROM [#{dataset}.#{table}] WHERE #{klass}_record_id IN (#{ids.to_s.gsub(/\[|\]/, '')})")
     end
 
     def build_records(rows)
