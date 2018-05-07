@@ -29,6 +29,7 @@ module BqStream
         t.string   :attr
         t.binary   :new_value
         t.datetime :updated_at
+        t.boolean  :sent_to_bq
       end unless connection.tables.include? table_name
     end
   end
