@@ -66,7 +66,7 @@ module BqStream
     end
 
     def dequeue_items
-      start_after_id = QueuedItem.where(sent_to_bq: true).last.id # added for testing TODO: update after test
+      start_after_id = QueuedItem.where(sent_to_bq: true).last.id || 0 # added for testing TODO: update after test
       log_code = rand(2**256).to_s(36)[0..7]
       log(:info, "#{Time.now}: ***** Dequeue Items Started ***** #{log_code}")
       OldestRecord.update_bq_earliest
