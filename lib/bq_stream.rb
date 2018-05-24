@@ -4,6 +4,7 @@ unless RUBY_ENGINE == 'opal'
   Dotenv.load
   require 'bq_stream/version'
   require 'bq_stream/configuration'
+  require 'bq_stream/comparison'
   require 'bq_stream/queued_item'
   require 'bq_stream/oldest_record'
   require 'bq_stream/bq_stream'
