@@ -69,7 +69,7 @@ class ActiveRecord::Base
                                   attr: k, new_value: v.to_s)
     end
   rescue Exception => e
-    BqStream.error_logger.error("#{Time.now}: EXCEPTION: #{e}")
+    BqStream.log(:error, "#{Time.now}: EXCEPTION: #{e}")
   end unless RUBY_ENGINE == 'opal'
 
   def queue_destroy
