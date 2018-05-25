@@ -16,14 +16,14 @@ module BqStream
 
     def bq_gather_and_compare(klass, dataset, table, qty)
       query_bq_records(qty, dataset, table)
-      compare_(@records, klass.classify.constantize)
+      compare_(@records, klass)
       @results.each { |result| puts result }
     end
 
     def query_bq_records(qty, dataset, table)
       @schema = []
       total_rows = @bq_writer.query("SELECT count(*) FROM [#{dataset}.#{table}]")['rows'].first['f'].first['v']
-      @bq_query ||= @bq_writer.query("SELECT * FROM [#{dataset}.#{table}] WHERE RAND() < #{qty * 2}/#{total_rows} LIMIT #{qty}")
+      @bq_query = @bq_writer.query("SELECT * FROM [#{dataset}.#{table}] WHERE RAND() < #{qty * 2}/#{total_rows} LIMIT #{qty}")
 
       @bq_query['schema']['fields'].each do |f|
         @schema << f['name']
@@ -58,16 +58,19 @@ module BqStream
       end
     end
 
-    def compare_(records, class_name)
+    def compare_(records, klass)
       @results = []
       records.each do |record|
         @fails = []
-        if record['friendly_id'].nil?
-          @results << "Order Record #{record['order_record_id']} Failed, friendly_id is nil!"
+        if record['record_id'].nil?
+          @results << "#{klass.capitalize} Record #{record['record_id']} Failed, id is nil!"
         else
           record.each do |k, v|
-            db_object = class_name.find_by_friendly_id(record['friendly_id'])
-            check_for_failures(class_name, k, v, db_object) if db_object.respond_to?(k)
+            db_object = klass.classify.constantize
+                             .find(record['record_id'])
+            if db_object.respond_to?(k)
+              check_for_failures(klass.classify.constantize, k, v, db_object)
+            end
           end
         end
         process_(record, @fails)
