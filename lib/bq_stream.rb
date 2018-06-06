@@ -1,26 +1,16 @@
-require 'dotenv'
-Dotenv.load
-
-if ENV['TEST']
+unless RUBY_ENGINE == 'opal'
   require 'active_record'
-  require 'activerecordbase'
-  require 'big_query' # development dependency
+  require 'dotenv'
+  Dotenv.load
   require 'bq_stream/version'
   require 'bq_stream/configuration'
+  require 'bq_stream/comparison'
   require 'bq_stream/queued_item'
   require 'bq_stream/oldest_record'
   require 'bq_stream/bq_stream'
+  Opal.append_path File.expand_path('../', __FILE__).untaint if defined? Opal
+  require 'big_query'
   require 'bulk_insert'
-else
-  require 'activerecordbase'
-
-  unless RUBY_ENGINE == 'opal'
-    require 'active_record'
-    require 'bq_stream/version'
-    require 'bq_stream/configuration'
-    require 'bq_stream/queued_item'
-    require 'bq_stream/oldest_record'
-    require 'bq_stream/bq_stream'
-    Opal.append_path File.expand_path('../', __FILE__).untaint
-  end
 end
+
+require 'activerecordbase'

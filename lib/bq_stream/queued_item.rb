@@ -20,16 +20,22 @@ module BqStream
       # make sure to use the default sort order for ORDER BY
     end
 
+    def self.queued_items_columns
+      { table_name: :string, record_id: :integer, attr: :string, new_value: :binary, updated_at: :datetime, sent_to_bq: :boolean }
+    end
+
+    def self.schema_match?
+      BqStream::const_get(BqStream.queued_items_table_name.classify).column_names == queued_items_columns.collect { |k, _v| k.to_s }.unshift('id')
+    end
+
     def self.build_table
       self.table_name = BqStream.queued_items_table_name
 
       connection.create_table(table_name, force: true) do |t|
-        t.string   :table_name
-        t.integer  :record_id
-        t.string   :attr
-        t.binary   :new_value
-        t.datetime :updated_at
-      end unless connection.tables.include? table_name
+        queued_items_columns.each do |k, v|
+          t.send(v, k)
+        end
+      end unless (connection.tables.include? table_name) && schema_match?
     end
   end
 end

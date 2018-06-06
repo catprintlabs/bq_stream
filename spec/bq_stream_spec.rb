@@ -257,7 +257,8 @@ describe BqStream do
                  'record_id' => @first_record.id,
                  'attr' => 'id',
                  'new_value' => '1',
-                 'updated_at' => @time_stamp.getutc
+                 'updated_at' => @time_stamp.getutc,
+                 'sent_to_bq' => nil
                },
                 {
                   'id' => 2,
@@ -265,7 +266,8 @@ describe BqStream do
                   'record_id' => @first_record.id,
                   'attr' => 'name',
                   'new_value' => 'primary record',
-                  'updated_at' => @time_stamp.getutc
+                  'updated_at' => @time_stamp.getutc,
+                  'sent_to_bq' => nil
                 },
                 {
                   'id' => 3,
@@ -273,7 +275,8 @@ describe BqStream do
                   'record_id' => @first_record.id,
                   'attr' => 'description',
                   'new_value' => 'first into the table',
-                  'updated_at' => @time_stamp.getutc
+                  'updated_at' => @time_stamp.getutc,
+                  'sent_to_bq' => nil
                 },
                 {
                   'id' => 4,
@@ -281,7 +284,8 @@ describe BqStream do
                   'record_id' => @first_record.id,
                   'attr' => 'required',
                   'new_value' => 'true',
-                  'updated_at' => @time_stamp.getutc
+                  'updated_at' => @time_stamp.getutc,
+                  'sent_to_bq' => nil
                 },
                 {
                   'id' => 5,
@@ -289,7 +293,8 @@ describe BqStream do
                   'record_id' => @first_record.id,
                   'attr' => 'created_at',
                   'new_value' => '2017-01-01 00:00:00 UTC',
-                  'updated_at' => @time_stamp.getutc
+                  'updated_at' => @time_stamp.getutc,
+                  'sent_to_bq' => nil
                 },
                 {
                   'id' => 6,
@@ -297,7 +302,8 @@ describe BqStream do
                   'record_id' => @first_record.id,
                   'attr' => 'updated_at',
                   'new_value' => '2017-01-01 00:00:00 UTC',
-                  'updated_at' => @time_stamp.getutc
+                  'updated_at' => @time_stamp.getutc,
+                  'sent_to_bq' => nil
                 },
                 {
                   'id' => 7,
@@ -305,7 +311,8 @@ describe BqStream do
                   'record_id' => @second_record.id,
                   'attr' => 'name',
                   'new_value' => 'secondary record',
-                  'updated_at' => @time_stamp.getutc
+                  'updated_at' => @time_stamp.getutc,
+                  'sent_to_bq' => nil
                 },
                 {
                   'id' => 8,
@@ -313,7 +320,8 @@ describe BqStream do
                   'record_id' => @second_record.id,
                   'attr' => 'status',
                   'new_value' => 'active',
-                  'updated_at' => @time_stamp.getutc
+                  'updated_at' => @time_stamp.getutc,
+                  'sent_to_bq' => nil
                 },
                 {
                   'id' => 9,
@@ -321,7 +329,8 @@ describe BqStream do
                   'record_id' => @third_record.id,
                   'attr' => 'name',
                   'new_value' => 'third record',
-                  'updated_at' => @time_stamp.getutc
+                  'updated_at' => @time_stamp.getutc,
+                  'sent_to_bq' => nil
                 },
                 {
                   'id' => 10,
@@ -329,7 +338,8 @@ describe BqStream do
                   'record_id' => @third_record.id,
                   'attr' => 'notes',
                   'new_value' => 'remember',
-                  'updated_at' => @time_stamp.getutc
+                  'updated_at' => @time_stamp.getutc,
+                  'sent_to_bq' => nil
                 },
                 {
                   'id' => 11,
@@ -337,7 +347,8 @@ describe BqStream do
                   'record_id' => @third_record.id,
                   'attr' => 'updated_at',
                   'new_value' => '2017-01-01 00:00:00 UTC',
-                  'updated_at' => @time_stamp.getutc
+                  'updated_at' => @time_stamp.getutc,
+                  'sent_to_bq' => nil
                 },
                 {
                   'id' => 12,
@@ -345,7 +356,8 @@ describe BqStream do
                   'record_id' => @first_record.id,
                   'attr' => 'required',
                   'new_value' => 'false',
-                  'updated_at' => @time_stamp.getutc
+                  'updated_at' => @time_stamp.getutc,
+                  'sent_to_bq' => nil
                 },
                 {
                   'id' => 13,
@@ -353,13 +365,14 @@ describe BqStream do
                   'record_id' => @second_record.id,
                   'attr' => 'Destroyed',
                   'new_value' => 'True',
-                  'updated_at' => @time_stamp.getutc
+                  'updated_at' => @time_stamp.getutc,
+                  'sent_to_bq' => nil
                 }])
     end
 
     it 'should send queueded items to bigquery and then delete them' do
       BqStream.dequeue_items
-      expect(BqStream::QueuedItem.all).to be_empty
+      expect(BqStream::QueuedItem.all).to be_empty # TODO: reinstate after test
       expect(BqStream.bq_writer.initial_args)
         .to eq([
                  {
