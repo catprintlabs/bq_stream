@@ -17,11 +17,18 @@ module BqStream
 
   class << self
     attr_accessor :logger
+    attr_accessor :error_logger
 
     def log(type, message)
       return unless logger
       type = :info unless %i[unknown fatal error warn info debug].include?(type)
       logger.send(type, message)
+    end
+
+    def error_log(type, message)
+      return unless logger
+      type = :error unless %i[unknown fatal error warn info debug].include?(type)
+      error_logger.send(type, message)
     end
 
     def create_bq_writer
