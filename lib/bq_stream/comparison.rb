@@ -8,7 +8,7 @@ module BqStream
     def database_check(klass, date_attr, dataset, table, qty = nil, start_date = Time.current.beginning_of_week - 1.week, end_date =  Time.current.end_of_week - 1.week)
       create_bq_writer
       query_db_records(klass.classify.constantize, date_attr, qty, start_date, end_date)
-      collect_bq_records(klass, dataset, table, @db_ids)
+      collect_bq_records(dataset, table, @db_ids)
       bq_gather_and_compare(klass, dataset, table, qty)
     end
 
@@ -43,8 +43,8 @@ module BqStream
       db_records.each { |r| @db_ids << r.id }
     end
 
-    def collect_bq_records(klass, dataset, table, ids)
-      @bq_query = @bq_writer.query("SELECT * FROM [#{dataset}.#{table}] WHERE #{klass}_record_id IN (#{ids.to_s.gsub(/\[|\]/, '')})")
+    def collect_bq_records(dataset, table, ids)
+      @bq_query = @bq_writer.query("SELECT * FROM [#{dataset}.#{table}] WHERE record_id IN (#{ids.to_s.gsub(/\[|\]/, '')})")
     end
 
     def build_records(rows)
