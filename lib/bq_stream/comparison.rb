@@ -96,7 +96,7 @@ module BqStream
     def process_(record, fails)
       unless record['friendly_id'].nil?
         unless fails.empty?
-          @results << "Order Record #{record['order_record_id']} "\
+          @results << "Order Record #{record['record_id']} "\
                       'Failed with these errors (db != bq)'
           fails.each { |fail| @results << fail }
         end
