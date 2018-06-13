@@ -80,7 +80,8 @@ module BqStream
       OldestRecord.update_bq_earliest
       create_bq_writer
       # records = QueuedItem.all.limit(batch_size) # removing for testing TODO: update after test
-      records = QueuedItem.where('id > ?', start_after_id).limit(batch_size)
+      records = QueuedItem.where('id < ?', start_after_id).where(sent_to_bq: nil)
+      records += QueuedItem.where('id > ?', start_after_id).limit(batch_size - records.count)
       log(:info, "#{Time.now}: Records Count: #{records.count} #{log_code}")
       data = records.collect do |i|
         new_val = encode_value(i.new_value) rescue nil
