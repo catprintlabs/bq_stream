@@ -90,7 +90,7 @@ module BqStream
       end
       @bq_writer.insert(bq_table_name, data) unless data.empty?
       records.each { |r| r.update(sent_to_bq: true) } # added for testing TODO: update after test
-      # QueuedItem.delete_all_with_limit # removing delete for testing TODO: reinstate after test
+      # QueuedItem.where(sent_to_bq: true).delete_all # removing delete for testing TODO: reinstate after test
       log(:info, "#{Time.now}: ***** Dequeue Items Ended ***** #{log_code}")
     end
 
