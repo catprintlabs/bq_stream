@@ -15,15 +15,15 @@ module BqStream
     protected
 
     def bq_gather_and_compare(klass, dataset, table, qty)
-      query_bq_records(qty, dataset, table)
+      query_bq_records(klass, dataset, table, qty)
       compare_(@records, klass)
       @results.each { |result| puts result }
     end
 
-    def query_bq_records(qty, dataset, table)
+    def query_bq_records(klass, dataset, table, qty)
       @schema = []
-      total_rows = @bq_writer.query("SELECT count(*) FROM [#{dataset}.#{table}]")['rows'].first['f'].first['v']
-      @bq_query = @bq_writer.query("SELECT * FROM [#{dataset}.#{table}] WHERE RAND() < #{qty * 2}/#{total_rows} LIMIT #{qty}")
+      total_rows = @bq_writer.query("SELECT count(*) FROM [#{dataset}.#{table}] WHERE table_name = '#{klass}'")['rows'].first['f'].first['v']
+      @bq_query = @bq_writer.query("SELECT * FROM [#{dataset}.#{table}] WHERE table_name = '#{klass}' AND RAND() < #{qty * 2}/#{total_rows} LIMIT #{qty}")
 
       @bq_query['schema']['fields'].each do |f|
         @schema << f['name']
@@ -63,43 +63,39 @@ module BqStream
       records.each do |record|
         @fails = []
         if record['record_id'].nil?
-          @results << "#{klass.capitalize} Record #{record['record_id']} Failed, id is nil!"
+          @results << "#{klass} Record #{record['record_id']} Failed, id is nil!"
         else
-          record.each do |k, v|
-            db_object = klass.classify.constantize
-                             .find(record['record_id'])
-            if db_object.respond_to?(k)
-              check_for_failures(klass.classify.constantize, k, v, db_object)
-            end
+          db_object = klass.classify.constantize
+                           .find(record['record_id'])
+          if db_object.respond_to?(record['attr'])
+            check_for_failures(klass.classify.constantize, record['attr'], record['new_value'], db_object)
           end
         end
-        process_(record, @fails)
+        process_(klass, record, @fails)
       end
     end
 
     def check_for_failures(klass, attr, val, db)
       if %i[string boolean].include?(klass.columns_hash[attr].type) &&
          db.send(attr) != val
-        @fails << " #{attr}: #{db.send(attr)} != #{val.nil? ? 'nil' : val}"
+        @fails << "  #{attr}: #{db.send(attr)} != #{val.nil? ? 'nil' : val}"
       elsif klass.columns_hash[attr].type == :integer &&
             db.send(attr) != (val.nil? ? nil : val.to_i)
-        @fails << " #{attr}: #{db.send(attr)} != #{val.nil? ? 'nil' : val.to_i}"
+        @fails << "  #{attr}: #{db.send(attr)} != #{val.nil? ? 'nil' : val.to_i}"
       elsif klass.columns_hash[attr].type == :decimal &&
             db.send(attr) != (val.nil? ? nil : val.to_d)
-        @fails << " #{attr}: #{db.send(attr)} != #{val.nil? ? 'nil' : val.to_d}"
+        @fails << "  #{attr}: #{db.send(attr)} != #{val.nil? ? 'nil' : val.to_d}"
       elsif klass.columns_hash[attr].type == :datetime &&
             db.send(attr).try(:utc) != (val.nil? ? nil : (Time.at(val.to_d).utc + 4.hours))
-        @fails << " #{attr}: #{db.send(attr).try(:utc)} != #{val.nil? ? 'nil' : (Time.at(val.to_d).utc + 4.hours)}"
+        @fails << "  #{attr}: #{db.send(attr).try(:utc)} != #{val.nil? ? 'nil' : (Time.at(val.to_d).utc + 4.hours)}"
       end
     end
 
-    def process_(record, fails)
-      unless record['friendly_id'].nil?
-        unless fails.empty?
-          @results << "Order Record #{record['record_id']} "\
-                      'Failed with these errors (db != bq)'
-          fails.each { |fail| @results << fail }
-        end
+    def process_(klass, record, fails)
+      unless fails.empty?
+        @results << "#{klass} Record #{record['record_id']} "\
+                    'Failed with these errors (db != bq)'
+        fails.each { |fail| @results << fail }
       end
     end
   end
