@@ -23,8 +23,7 @@ module BqStream
     def query_bq_records(klass, dataset, table, qty)
       @schema = []
       total_rows = @bq_writer.query("SELECT count(*) FROM [#{dataset}.#{table}] WHERE table_name = '#{klass}'")['rows'].first['f'].first['v']
-      @bq_query = @bq_writer.query("SELECT * FROM [#{dataset}.#{table}] WHERE table_name = '#{klass}' AND RAND() < #{qty * 2}/#{total_rows} LIMIT #{qty}")
-
+      @bq_query = @bq_writer.query("SELECT * FROM (SELECT *, RANK() OVER(PARTITION BY record_id, attr ORDER BY updated_at DESC) rank FROM [#{dataset}.#{table}]) WHERE table_name = '#{klass}' AND RAND() < #{qty * 4}/#{total_rows} AND rank=1 LIMIT #{qty}")
       @bq_query['schema']['fields'].each do |f|
         @schema << f['name']
       end
@@ -76,18 +75,23 @@ module BqStream
     end
 
     def check_for_failures(klass, attr, val, db)
-      if %i[string boolean].include?(klass.columns_hash[attr].type) &&
-         db.send(attr) != val
+      if klass.columns_hash[attr].type == :string && db.send(attr) != val
         @fails << "  #{attr}: #{db.send(attr)} != #{val.nil? ? 'nil' : val}"
+      elsif klass.columns_hash[attr].type == :boolean
+        val = true if val == 'true'
+        val = false if val == 'false'
+        if db.send(attr) != val
+          @fails << "  #{attr}: #{db.send(attr)} != #{val.nil? ? 'nil' : val}"
+        end
       elsif klass.columns_hash[attr].type == :integer &&
             db.send(attr) != (val.nil? ? nil : val.to_i)
         @fails << "  #{attr}: #{db.send(attr)} != #{val.nil? ? 'nil' : val.to_i}"
       elsif klass.columns_hash[attr].type == :decimal &&
-            db.send(attr) != (val.nil? ? nil : val.to_d)
+            db.send(attr) != (val.nil? ? nil : val.to_d.round(5))
         @fails << "  #{attr}: #{db.send(attr)} != #{val.nil? ? 'nil' : val.to_d}"
       elsif klass.columns_hash[attr].type == :datetime &&
-            db.send(attr).try(:utc) != (val.nil? ? nil : (Time.at(val.to_d).utc + 4.hours))
-        @fails << "  #{attr}: #{db.send(attr).try(:utc)} != #{val.nil? ? 'nil' : (Time.at(val.to_d).utc + 4.hours)}"
+            db.send(attr).try(:utc) != (val.nil? ? nil : Time.at(val.to_datetime).utc)
+        @fails << "  #{attr}: #{db.send(attr).try(:utc)} != #{val.nil? ? 'nil' : (Time.at(val.to_datetime).utc)}"
       end
     end
 
