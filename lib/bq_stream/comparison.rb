@@ -3,21 +3,23 @@ module BqStream
     def big_query_check(klass, dataset, table, qty)
       create_bq_writer
       bq_gather_and_compare(klass, dataset, table, qty)
+      display_results
     end
 
     def database_check(klass, date_attr, dataset, table, qty = nil, start_date = Time.current.beginning_of_week - 1.week, end_date =  Time.current.end_of_week - 1.week)
       create_bq_writer
-      query_db_records(klass.classify.constantize, date_attr, qty, start_date, end_date)
+      query_db_records(klass.classify.constantize, date_attr,
+                       qty, start_date, end_date)
       collect_bq_records(dataset, table, @db_ids)
-      bq_gather_and_compare(klass, dataset, table, qty)
+      compare_records(@db_records, @bq_records, klass)
+      display_results
     end
 
     protected
 
     def bq_gather_and_compare(klass, dataset, table, qty)
       query_bq_records(klass, dataset, table, qty)
-      compare_(@records, klass)
-      @results.each { |result| puts result }
+      compare_(@bq_records, klass)
     end
 
     def query_bq_records(klass, dataset, table, qty)
@@ -33,27 +35,33 @@ module BqStream
 
     def query_db_records(klass, date_attr, qty, start_date, end_date)
       @db_ids = []
-      db_records =
+      @db_records =
         if qty
           klass.where("#{date_attr} > ? AND #{date_attr} < ?", start_date, end_date).shuffle.first(qty)
         else
           klass.where("#{date_attr} > ? AND #{date_attr} < ?", start_date, end_date)
         end
-      db_records.each { |r| @db_ids << r.id }
+      @db_records.each { |r| @db_ids << r.id }
     end
 
     def collect_bq_records(dataset, table, ids)
-      @bq_query = @bq_writer.query("SELECT * FROM [#{dataset}.#{table}] WHERE record_id IN (#{ids.to_s.gsub(/\[|\]/, '')})")
+      @schema = []
+      @bq_query = @bq_writer.query("SELECT * FROM (SELECT *, RANK() OVER(PARTITION BY record_id, attr ORDER BY updated_at DESC) rank FROM [#{dataset}.#{table}]) WHERE record_id IN (#{ids.to_s.gsub(/\[|\]/, '')}) AND rank=1")
+      @bq_query['schema']['fields'].each do |f|
+        @schema << f['name']
+      end
+      @schema.uniq!
+      build_records(@bq_query['rows'])
     end
 
     def build_records(rows)
-      @records = []
+      @bq_records = []
       rows.each do |row|
         values = []
         row['f'].each_with_index do |value, index|
           values << [@schema[index], value['v']]
         end
-        @records << values.to_h
+        @bq_records << values.to_h
       end
     end
 
@@ -71,6 +79,25 @@ module BqStream
           end
         end
         process_(klass, record, @fails)
+      end
+    end
+
+    def compare_records(db_records, bq_records, klass)
+      @results = []
+      bq_records.each do |bq_record|
+        @fails = []
+        if bq_record['record_id'].nil?
+          @results << "#{klass} Record #{bq_record['record_id']} Failed, id is nil!"
+        else
+          # db_object = db_records.find(bq_record['record_id'])
+          db_object = db_records.select { |record| record.id == bq_record['record_id'].to_i }.first
+          if db_object && db_object.respond_to?(bq_record['attr'])
+            check_for_failures(klass.classify.constantize, bq_record['attr'], bq_record['new_value'], db_object)
+          else
+            @results << "#{klass} Record #{bq_record['record_id']} Failed, not found in the database!"
+          end
+        end
+        process_(klass, bq_record, @fails)
       end
     end
 
@@ -100,6 +127,14 @@ module BqStream
         @results << "#{klass} Record #{record['record_id']} "\
                     'Failed with these errors (db != bq)'
         fails.each { |fail| @results << fail }
+      end
+    end
+
+    def display_results
+      if @results.empty?
+        puts '!!! Comparison Matches Successfully !!!'
+      else
+        @results.each { |result| puts result }
       end
     end
   end
