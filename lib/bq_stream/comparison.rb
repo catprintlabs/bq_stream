@@ -56,29 +56,35 @@ module BqStream
 
     def build_records(rows)
       @bq_records = []
-      rows.each do |row|
-        values = []
-        row['f'].each_with_index do |value, index|
-          values << [@schema[index], value['v']]
+      if rows
+        rows.each do |row|
+          values = []
+          row['f'].each_with_index do |value, index|
+            values << [@schema[index], value['v']]
+          end
+          @bq_records << values.to_h
         end
-        @bq_records << values.to_h
       end
     end
 
     def compare_(records, klass)
       @results = []
-      records.each do |record|
-        @fails = []
-        if record['record_id'].nil?
-          @results << "#{klass} Record #{record['record_id']} Failed, id is nil!"
-        else
-          db_object = klass.classify.constantize
-                           .find(record['record_id'])
-          if db_object.respond_to?(record['attr'])
-            check_for_failures(klass.classify.constantize, record['attr'], record['new_value'], db_object)
+      if !records.count.zero?
+        records.each do |record|
+          @fails = []
+          if record['record_id'].nil?
+            @results << "#{klass} Record #{record['record_id']} Failed, id is nil!"
+          else
+            db_object = klass.classify.constantize
+                             .find(record['record_id'])
+            if db_object.respond_to?(record['attr'])
+              check_for_failures(klass.classify.constantize, record['attr'], record['new_value'], db_object)
+            end
           end
+          process_(klass, record, @fails)
         end
-        process_(klass, record, @fails)
+      else
+        @results << '!!! No Records Found in BigQuery !!!'
       end
     end
 
