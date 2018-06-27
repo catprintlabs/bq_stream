@@ -108,7 +108,7 @@ module BqStream
     end
 
     def check_for_failures(klass, attr, val, db)
-      if klass.columns_hash[attr].type == :string && db.send(attr) != val
+      if klass.columns_hash[attr].type == :string && db.send(attr).to_s != val
         @fails << "  #{attr}: #{db.send(attr)} != #{val.nil? ? 'nil' : val}"
       elsif klass.columns_hash[attr].type == :boolean
         val = true if val == 'true'
