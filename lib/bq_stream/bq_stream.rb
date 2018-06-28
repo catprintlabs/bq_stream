@@ -74,13 +74,11 @@ module BqStream
     end
 
     def dequeue_items
-      start_after_id = QueuedItem.where(sent_to_bq: true).last.id rescue 0 # added for testing TODO: update after test
       log_code = rand(2**256).to_s(36)[0..7]
       log(:info, "#{Time.now}: ***** Dequeue Items Started ***** #{log_code}")
       OldestRecord.update_bq_earliest
       create_bq_writer
-      # records = QueuedItem.all.limit(batch_size) # removing for testing TODO: update after test
-      records = QueuedItem.where('id > ?', start_after_id).limit(batch_size)
+      records = QueuedItem.where(sent_to_bq: nil).limit(batch_size)
       log(:info, "#{Time.now}: Records Count: #{records.count} #{log_code}")
       data = records.collect do |i|
         new_val = encode_value(i.new_value) rescue nil
@@ -88,8 +86,8 @@ module BqStream
           new_value: new_val ? new_val : i.new_value, updated_at: i.updated_at }
       end
       @bq_writer.insert(bq_table_name, data) unless data.empty?
-      records.each { |r| r.update(sent_to_bq: true) } # added for testing TODO: update after test
-      # QueuedItem.delete_all_with_limit # removing delete for testing TODO: reinstate after test
+      records.each { |r| r.update(sent_to_bq: true) }
+      # QueuedItem.where(sent_to_bq: true).delete_all # removing delete for testing TODO: reinstate after test
       log(:info, "#{Time.now}: ***** Dequeue Items Ended ***** #{log_code}")
     end
 
