@@ -10,7 +10,7 @@ module BqStream
       create_bq_writer
       query_db_records(klass.classify.constantize, date_attr,
                        qty, start_date, end_date)
-      collect_bq_records(dataset, table, @db_ids)
+      collect_bq_records(klass, dataset, table, @db_ids)
       compare_records(@db_records, @bq_records, klass)
       display_results
     end
@@ -44,14 +44,18 @@ module BqStream
       @db_records.each { |r| @db_ids << r.id }
     end
 
-    def collect_bq_records(dataset, table, ids)
+    def collect_bq_records(klass, dataset, table, ids)
       @schema = []
-      @bq_query = @bq_writer.query("SELECT * FROM (SELECT *, RANK() OVER(PARTITION BY record_id, attr ORDER BY updated_at DESC) rank FROM [#{dataset}.#{table}]) WHERE record_id IN (#{ids.to_s.gsub(/\[|\]/, '')}) AND rank=1")
-      @bq_query['schema']['fields'].each do |f|
-        @schema << f['name']
+      if !ids.blank?
+        @bq_query = @bq_writer.query("SELECT * FROM (SELECT *, RANK() OVER(PARTITION BY record_id, attr ORDER BY updated_at DESC) rank FROM [#{dataset}.#{table}]) WHERE table_name = '#{klass}' AND record_id IN (#{ids.to_s.gsub(/\[|\]/, '')}) AND rank=1")
+        @bq_query['schema']['fields'].each do |f|
+          @schema << f['name']
+        end
+        @schema.uniq!
+        build_records(@bq_query['rows'])
+      else
+        @bq_records = []
       end
-      @schema.uniq!
-      build_records(@bq_query['rows'])
     end
 
     def build_records(rows)
@@ -90,20 +94,24 @@ module BqStream
 
     def compare_records(db_records, bq_records, klass)
       @results = []
-      bq_records.each do |bq_record|
-        @fails = []
-        if bq_record['record_id'].nil?
-          @results << "#{klass} Record #{bq_record['record_id']} Failed, id is nil!"
-        else
-          # db_object = db_records.find(bq_record['record_id'])
-          db_object = db_records.select { |record| record.id == bq_record['record_id'].to_i }.first
-          if db_object && db_object.respond_to?(bq_record['attr'])
-            check_for_failures(klass.classify.constantize, bq_record['attr'], bq_record['new_value'], db_object)
+      if bq_records.blank?
+        @results << '!!! No records found in BigQuery !!!'
+      else
+        bq_records.each do |bq_record|
+          @fails = []
+          if bq_record['record_id'].nil?
+            @results << "#{klass} Record #{bq_record['record_id']} Failed, id is nil!"
           else
-            @results << "#{klass} Record #{bq_record['record_id']} Failed, not found in the database!"
+            # db_object = db_records.find(bq_record['record_id'])
+            db_object = db_records.select { |record| record.id == bq_record['record_id'].to_i }.first
+            if db_object && db_object.respond_to?(bq_record['attr'])
+              check_for_failures(klass.classify.constantize, bq_record['attr'], bq_record['new_value'], db_object)
+            else
+              @results << "#{klass} Record #{bq_record['record_id']} Failed, not found in the database!"
+            end
           end
+          process_(klass, bq_record, @fails)
         end
-        process_(klass, bq_record, @fails)
       end
     end
 
