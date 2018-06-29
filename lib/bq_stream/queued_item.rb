@@ -7,7 +7,8 @@ module BqStream
     end
 
     def self.available_rows
-      [BqStream.batch_size - (all.count + buffer.count), 100].max
+      # [BqStream.batch_size - (all.count + buffer.count), 0].max
+      [BqStream.batch_size - (where(sent_to_bq: nil).count + buffer.count), 0].max
     end
 
     def self.create_from_buffer
