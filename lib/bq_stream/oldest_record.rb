@@ -25,8 +25,8 @@ module BqStream
       BqStream.log(:info, "#{Time.now}: >>>>> Update Oldest Records "\
                    "For #{table} Starting <<<<<")
       oldest_attr_recs = where('table_name = ?', table)
-      # TODO: could this ever be different
-      earliest_update = oldest_attr_recs.map(&:bq_earliest_update).uniq.min
+      earliest_update =
+        oldest_attr_recs.map(&:bq_earliest_update).reject(&:nil?).uniq.min
       BqStream.log(:info, "#{Time.now}: Table #{table} "\
                    "count #{oldest_attr_recs.count}")
       next_record = next_record_to_write(table.constantize, earliest_update)
