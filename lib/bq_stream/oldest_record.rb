@@ -30,13 +30,9 @@ module BqStream
       BqStream.log(:info, "#{Time.now}: Table #{table} "\
                    "count #{oldest_attr_recs.count}")
       next_records = records_to_write(table.constantize, earliest_update)
-      unless next_records.empty?
-        next_records =
-          next_records.where(created_at: next_records.first.created_at)
-      end
       BqStream.log(:info, "#{Time.now}: $$$$$ Earliest Time #{earliest_update}"\
                    " Blank? #{earliest_update.blank?} $$$$$")
-      if !next_records.empty?
+      if next_records
         next_records.each do |next_record|
           BqStream.log(:info, "#{Time.now}: oldest_attr_recs id "\
                        "#{next_record.id}")
@@ -47,9 +43,10 @@ module BqStream
                      "For #{table} Ending <<<<<")
       end
       BqStream.log(:info, "#{Time.now}: $$$$$ Delete & Return if this "\
-        "is true => #{next_records.empty? && earliest_update.blank?} $$$$$")
-      oldest_attr_recs.delete_all && return if next_records.empty? &&
-                                               earliest_update.blank?
+        "is true => #{next_records.nil? && earliest_update.blank?} $$$$$")
+      if next_records.nil? && earliest_update.blank?
+        oldest_attr_recs.delete_all && return
+      end
       oldest_attr_recs.each do |oldest_attr_rec|
         next_records.each do |next_record|
           oldest_attr_rec.buffer_attribute(next_record)
@@ -62,10 +59,18 @@ module BqStream
     end
 
     def self.records_to_write(table, earliest_update)
-      table.where(
-        'created_at >= ? AND created_at < ?',
-        BqStream.back_date, earliest_update || Time.now
-      ).order('created_at DESC')
+      # Query next record created_at date within time frame
+      begin
+        next_created_at = table.where(
+          'created_at >= ? AND created_at < ?',
+          BqStream.back_date, earliest_update || Time.now
+        ).order('created_at DESC').pluck(:created_at).first
+      rescue NoMethodError
+        nil
+      end
+
+      # Get all records with date for the current records to write
+      table.where('created_at = ?', next_created_at) if next_created_at
     end
 
     def self.build_table
