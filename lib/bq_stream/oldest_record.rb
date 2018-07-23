@@ -60,14 +60,10 @@ module BqStream
 
     def self.records_to_write(table, earliest_update)
       # Query next record created_at date within time frame
-      begin
-        next_created_at = table.where(
-          'created_at >= ? AND created_at < ?',
-          BqStream.back_date, earliest_update || Time.now
-        ).order('created_at DESC').pluck(:created_at).first
-      rescue NoMethodError
-        nil
-      end
+      next_created_at = table.where(
+        'created_at >= ? AND created_at < ?',
+        BqStream.back_date, earliest_update || Time.now
+      ).order('created_at DESC').pluck(:created_at).first
 
       # Get all records with date for the current records to write
       table.where('created_at = ?', next_created_at) if next_created_at
