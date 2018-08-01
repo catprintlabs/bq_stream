@@ -29,35 +29,44 @@ module BqStream
         oldest_attr_recs.map(&:bq_earliest_update).reject(&:nil?).uniq.min
       BqStream.log(:info, "#{Time.now}: Table #{table} "\
                    "count #{oldest_attr_recs.count}")
-      next_record = next_record_to_write(table.constantize, earliest_update)
+      next_records = records_to_write(table.constantize, earliest_update)
       BqStream.log(:info, "#{Time.now}: $$$$$ Earliest Time #{earliest_update}"\
                    " Blank? #{earliest_update.blank?} $$$$$")
-      if next_record
-        BqStream.log(:info, "#{Time.now}: oldest_attr_recs id "\
-                     "#{next_record.id rescue nil}")
+      if next_records
+        next_records.each do |next_record|
+          BqStream.log(:info, "#{Time.now}: oldest_attr_recs id "\
+                       "#{next_record.id}")
+        end
       else
         BqStream.log(:info, "#{Time.now}: >>>>> Deleting & Returning <<<<<")
         BqStream.log(:info, "#{Time.now}: >>>>> Update Oldest Records "\
                      "For #{table} Ending <<<<<")
       end
-      BqStream.log(:info, "#{Time.now}: $$$$$ Delete & Return unless this "\
-        "is true => #{ next_record && !earliest_update.blank? } $$$$$")
-      oldest_attr_recs.delete_all && return unless next_record &&
-                                                   !earliest_update.blank?
-      oldest_attr_recs.each do |oldest_attr_rec|
-        oldest_attr_rec.buffer_attribute(next_record)
+      BqStream.log(:info, "#{Time.now}: $$$$$ Delete & Return if this "\
+        "is true => #{next_records.nil? && earliest_update.blank?} $$$$$")
+      if next_records.nil? && earliest_update.blank?
+        oldest_attr_recs.delete_all && return
       end
-      oldest_attr_recs.update_all(bq_earliest_update: next_record.created_at)
+      oldest_attr_recs.each do |oldest_attr_rec|
+        next_records.each do |next_record|
+          oldest_attr_rec.buffer_attribute(next_record)
+        end
+      end
+      oldest_attr_recs.update_all(bq_earliest_update: next_records.first.created_at)
       BqStream.log(:info, "#{Time.now}: #{BqStream::QueuedItem.buffer.count}")
       BqStream.log(:info, "#{Time.now}: >>>>> Update Oldest Records "\
                           "For #{table} Ending <<<<<")
     end
 
-    def self.next_record_to_write(table, earliest_update)
-      table.where(
+    def self.records_to_write(table, earliest_update)
+      # Query next record created_at date within time frame
+      next_created_at = table.where(
         'created_at >= ? AND created_at < ?',
         BqStream.back_date, earliest_update || Time.now
-      ).order('created_at DESC').first
+      ).order('created_at DESC').pluck(:created_at).first
+
+      # Get all records with date for the current records to write
+      table.where('created_at = ?', next_created_at) if next_created_at
     end
 
     def self.build_table
