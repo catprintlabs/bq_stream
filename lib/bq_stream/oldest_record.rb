@@ -47,9 +47,11 @@ module BqStream
       if next_records.nil? && earliest_update.blank?
         oldest_attr_recs.delete_all && return
       end
-      oldest_attr_recs.each do |oldest_attr_rec|
-        next_records.each do |next_record|
-          oldest_attr_rec.buffer_attribute(next_record)
+      if next_records
+        oldest_attr_recs.each do |oldest_attr_rec|
+          next_records.each do |next_record|
+            oldest_attr_rec.buffer_attribute(next_record)
+          end
         end
       end
       oldest_attr_recs.update_all(bq_earliest_update: next_records.first.created_at)
