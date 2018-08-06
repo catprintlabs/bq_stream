@@ -53,8 +53,8 @@ module BqStream
             oldest_attr_rec.buffer_attribute(next_record)
           end
         end
+        oldest_attr_recs.update_all(bq_earliest_update: next_records.first.created_at)
       end
-      oldest_attr_recs.update_all(bq_earliest_update: next_records.first.created_at)
       BqStream.log(:info, "#{Time.now}: #{BqStream::QueuedItem.buffer.count}")
       BqStream.log(:info, "#{Time.now}: >>>>> Update Oldest Records "\
                           "For #{table} Ending <<<<<")
