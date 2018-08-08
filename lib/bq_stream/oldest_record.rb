@@ -32,32 +32,24 @@ module BqStream
       next_records = records_to_write(table.constantize, earliest_update)
       BqStream.log(:info, "#{Time.now}: $$$$$ Earliest Time #{earliest_update}"\
                    " Blank? #{earliest_update.blank?} $$$$$")
-      if next_records
-        next_records.each do |next_record|
-          BqStream.log(:info, "#{Time.now}: oldest_attr_recs id "\
-                       "#{next_record.id}")
-        end
-      else
+      if next_records.nil?
         BqStream.log(:info, "#{Time.now}: >>>>> Deleting & Returning <<<<<")
         BqStream.log(:info, "#{Time.now}: >>>>> Update Oldest Records "\
                      "For #{table} Ending <<<<<")
-      end
-      BqStream.log(:info, "#{Time.now}: $$$$$ Delete & Return if this "\
-        "is true => #{next_records.nil? && earliest_update.blank?} $$$$$")
-      if next_records.nil? && earliest_update.blank?
         oldest_attr_recs.delete_all && return
-      end
-      if next_records
+      else
         oldest_attr_recs.each do |oldest_attr_rec|
           next_records.each do |next_record|
+            BqStream.log(:info, "#{Time.now}: oldest_attr_recs id "\
+                         "#{next_record.id}")
             oldest_attr_rec.buffer_attribute(next_record)
           end
         end
         oldest_attr_recs.update_all(bq_earliest_update: next_records.first.created_at)
+        BqStream.log(:info, "#{Time.now}: #{BqStream::QueuedItem.buffer.count}")
+        BqStream.log(:info, "#{Time.now}: >>>>> Update Oldest Records "\
+                            "For #{table} Ending <<<<<")
       end
-      BqStream.log(:info, "#{Time.now}: #{BqStream::QueuedItem.buffer.count}")
-      BqStream.log(:info, "#{Time.now}: >>>>> Update Oldest Records "\
-                          "For #{table} Ending <<<<<")
     end
 
     def self.records_to_write(table, earliest_update)
