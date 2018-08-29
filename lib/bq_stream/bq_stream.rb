@@ -91,6 +91,16 @@ module BqStream
       log(:info, "#{Time.now}: ***** Dequeue Items Ended ***** #{log_code}")
     end
 
+    def insert_missing_records(records, bq_attributes)
+      bq_attributes.each do |bqa|
+        records.each do |record|
+          unless record.send(bqa).nil?
+            QueuedItem.create(table_name: record.class.to_s, record_id: record.id, attr: bqa.to_s, new_value: record.send(bqa), updated_at: record.updated_at)
+          end
+        end
+      end
+    end
+
     def create_bq_dataset
       @bq_writer.create_dataset(dataset)
     end
