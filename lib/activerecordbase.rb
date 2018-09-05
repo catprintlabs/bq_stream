@@ -4,7 +4,7 @@ class ActiveRecord::Base
   end
 
   def self.bq_attributes(opts = {})
-    unless RUBY_ENGINE == 'opal'
+    unless RUBY_ENGINE == 'opal' || !BqStream.dataset
       if opts == :all
         bq_atr_of_interest = column_names.map(&:to_sym)
       elsif opts[:only]
