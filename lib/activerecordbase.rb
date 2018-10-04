@@ -58,7 +58,7 @@ class ActiveRecord::Base
       next unless attributes_of_interest.include?(k.to_sym) && !v.nil?
       BqStream::QueuedItem.create(table_name: self.class.to_s,
                                   record_id: id, attr: k,
-                                  new_value: v.to_s)
+                                  new_value: (v.try(:utc) ? v.utc : v).to_s)
     end
   end
 
@@ -66,7 +66,7 @@ class ActiveRecord::Base
     transaction_changed_attributes.each do |k, v|
       next unless attributes_of_interest.include?(k.to_sym)
       BqStream::QueuedItem.create(table_name: self.class.to_s, record_id: id,
-                                  attr: k, new_value: v.to_s)
+                                  attr: k, new_value: (v.try(:utc) ? v.utc : v).to_s)
     end
   rescue Exception => e
     BqStream.log(:error, "#{Time.now}: EXCEPTION: #{e}")
