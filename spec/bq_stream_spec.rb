@@ -352,15 +352,6 @@ describe BqStream do
                 },
                 {
                   'id' => 12,
-                  'table_name' => 'TableFirst',
-                  'record_id' => @first_record.id,
-                  'attr' => 'required',
-                  'new_value' => 'false',
-                  'updated_at' => @time_stamp.getutc,
-                  'sent_to_bq' => nil
-                },
-                {
-                  'id' => 13,
                   'table_name' => 'TableSecond',
                   'record_id' => @second_record.id,
                   'attr' => 'Destroyed',
@@ -370,8 +361,9 @@ describe BqStream do
                 }])
     end
 
-    it 'should send queueded items to bigquery and then delete them' do
-      BqStream.dequeue_items
+    it 'should send queued items to bigquery' do
+    # it 'should send queued items to bigquery and then delete them' do # TODO: reinstate after test
+        BqStream.dequeue_items
       # expect(BqStream::QueuedItem.all).to be_empty # TODO: reinstate after test
       expect(BqStream.bq_writer.initial_args)
         .to eq([
@@ -454,11 +446,6 @@ describe BqStream do
                      record_id: @third_record.id,
                      attr: 'updated_at',
                      new_value: '2017-01-01 00:00:00 UTC',
-                     updated_at: @time_stamp },
-                   { table_name: 'TableFirst',
-                     record_id: @first_record.id,
-                     attr: 'required',
-                     new_value: 'false',
                      updated_at: @time_stamp },
                    { table_name: 'TableSecond',
                      record_id: @second_record.id,
