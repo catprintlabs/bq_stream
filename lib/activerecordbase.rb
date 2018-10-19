@@ -60,7 +60,10 @@ class ActiveRecord::Base
                                   record_id: id, attr: k,
                                   new_value: v.to_s)
     end
-  end
+  rescue Exception => e
+    BqStream.log(:error, "#{Time.now}: EXCEPTION: #{e}")
+  end unless RUBY_ENGINE == 'opal'
+
 
   def queue_update(attributes_of_interest)
     transaction_changed_attributes.each do |k, v|
