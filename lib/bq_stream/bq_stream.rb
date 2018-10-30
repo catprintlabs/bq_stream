@@ -14,6 +14,7 @@ module BqStream
   define_setting :bq_table_name, 'bq_datastream'
   define_setting :back_date, nil
   define_setting :batch_size, 1000
+  define_setting :timezone, 'UTC'
 
   class << self
     attr_accessor :logger
