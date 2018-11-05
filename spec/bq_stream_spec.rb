@@ -237,7 +237,7 @@ describe BqStream do
                            rank: 1)
       @third_record =
         TableThird.create(name: 'third record',
-                          notes: 'remember',
+                          notes: '12.50',
                           order: 22)
       TableFourth.create(name: 'fourth record',
                         listing: 'important',
@@ -339,7 +339,7 @@ describe BqStream do
                   'table_name' => 'TableThird',
                   'record_id' => @third_record.id,
                   'attr' => 'notes',
-                  'new_value' => 'remember',
+                  'new_value' => '12.50',
                   'updated_at' => @time_stamp,
                   'sent_to_bq' => nil
                 },
@@ -442,7 +442,7 @@ describe BqStream do
                    { table_name: 'TableThird',
                      record_id: @third_record.id,
                      attr: 'notes',
-                     new_value: 'remember',
+                     new_value: '12.50',
                      updated_at: Time.parse('2016-12-31 19:00:00') },
                    { table_name: 'TableThird',
                      record_id: @third_record.id,
