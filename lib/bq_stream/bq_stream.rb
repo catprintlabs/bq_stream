@@ -79,15 +79,18 @@ module BqStream
       log(:info, "#{Time.now}: ***** Dequeue Items Started ***** #{log_code}")
       OldestRecord.update_bq_earliest
       create_bq_writer
+      log(:info, "#{Time.now}: ***** Set Records ***** #{log_code}")
       records = QueuedItem.where(sent_to_bq: nil).limit(batch_size)
-      log(:info, "#{Time.now}: Records Count: #{records.count} #{log_code}")
+      log(:info, "#{Time.now}: ***** Package #{records.count} Records ***** #{log_code}")
       data = records.collect do |i|
         new_val = encode_value(i.new_value) rescue nil
         { table_name: i.table_name, record_id: i.record_id, attr: i.attr,
           new_value: new_val ? new_val : i.new_value, updated_at: i.updated_at }
       end
+      log(:info, "#{Time.now}: ***** Insert Records ***** #{log_code}")
       @bq_writer.insert(bq_table_name, data) unless data.empty?
-      records.each { |r| r.update(sent_to_bq: true) }
+      log(:info, "#{Time.now}: ***** Update Records ***** #{log_code}")
+      records.update_all(sent_to_bq: true)
       # QueuedItem.where(sent_to_bq: true).delete_all # removing delete for testing TODO: reinstate after test
       log(:info, "#{Time.now}: ***** Dequeue Items Ended ***** #{log_code}")
     end
