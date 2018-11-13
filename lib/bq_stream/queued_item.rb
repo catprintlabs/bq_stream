@@ -22,7 +22,7 @@ module BqStream
     end
 
     def self.queued_items_columns
-      { table_name: :string, record_id: :integer, attr: :string, new_value: :binary, updated_at: :datetime, sent_to_bq: :boolean }
+      { table_name: :string, record_id: :integer, attr: :string, new_value: :binary, updated_at: :datetime, sent_to_bq: :boolean, sent_to_bq_index: :index }
     end
 
     def self.schema_match?
@@ -34,7 +34,11 @@ module BqStream
 
       connection.create_table(table_name, force: true) do |t|
         queued_items_columns.each do |k, v|
-          t.send(v, k)
+          if v == :index
+            t.send(v, k.to_s.split('_index').first.to_sym)
+          else
+            t.send(v, k)
+          end
         end
       end unless (connection.tables.include? table_name) && schema_match?
     end
