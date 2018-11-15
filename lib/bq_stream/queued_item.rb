@@ -22,23 +22,24 @@ module BqStream
     end
 
     def self.queued_items_columns
-      { table_name: :string, record_id: :integer, attr: :string, new_value: :binary, updated_at: :datetime, sent_to_bq: :boolean, sent_to_bq_index: :index }
+      { table_name: :string, record_id: :integer, attr: :string, new_value: :binary, updated_at: :datetime, sent_to_bq: :boolean }
+    end
+
+    def self.indexed_columns
+      %i(sent_to_bq)
     end
 
     def self.schema_match?
-      BqStream::const_get(BqStream.queued_items_table_name.classify).column_names == queued_items_columns.collect { |k, _v| k.to_s }.unshift('id')
+      BqStream::const_get(BqStream.queued_items_table_name.classify).column_names ==
+        queued_items_columns.collect { |k, _v| k.to_s }.unshift('id')
     end
 
     def self.build_table
       self.table_name = BqStream.queued_items_table_name
-
       connection.create_table(table_name, force: true) do |t|
         queued_items_columns.each do |k, v|
-          if v == :index
-            t.send(v, k.to_s.split('_index').first.to_sym)
-          else
-            t.send(v, k)
-          end
+          t.send(v, k)
+          t.index k if indexed_columns.include?(k)
         end
       end unless (connection.tables.include? table_name) && schema_match?
     end
