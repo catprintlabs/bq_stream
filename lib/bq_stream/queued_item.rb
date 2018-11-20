@@ -26,12 +26,20 @@ module BqStream
     end
 
     def self.indexed_columns
-      %i(sent_to_bq)
+      %i()
     end
 
     def self.schema_match?
       BqStream::const_get(BqStream.queued_items_table_name.classify).column_names ==
         queued_items_columns.collect { |k, _v| k.to_s }.unshift('id')
+    end
+
+    def self.index_match?
+      indexes = []
+      connection.indexes(:queued_items).each do |i|
+        indexes << i.name.split('_on_').last.to_sym
+      end
+      indexes == indexed_columns
     end
 
     def self.build_table
@@ -41,7 +49,7 @@ module BqStream
           t.send(v, k)
           t.index k if indexed_columns.include?(k)
         end
-      end unless (connection.tables.include? table_name) && schema_match?
+      end unless (connection.tables.include? table_name) && schema_match? && index_match?
     end
   end
 end
