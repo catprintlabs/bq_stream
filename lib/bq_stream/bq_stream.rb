@@ -49,7 +49,7 @@ module BqStream
       create_bq_writer
       create_bq_dataset unless @bq_writer.datasets_formatted.include?(dataset)
       create_bq_table unless @bq_writer.tables_formatted.include?(bq_table_name)
-      initialize_old_records
+      initialize_old_records if back_date
     end
 
     def initialize_old_records
@@ -77,7 +77,7 @@ module BqStream
     def dequeue_items
       log_code = rand(2**256).to_s(36)[0..7]
       log(:info, "#{Time.now}: ***** Dequeue Items Started ***** #{log_code}")
-      OldestRecord.update_bq_earliest
+      OldestRecord.update_bq_earliest if back_date
       create_bq_writer
       log(:info, "#{Time.now}: ***** Set Records ***** #{log_code}")
       records = QueuedItem.where(sent_to_bq: nil).limit(batch_size)
