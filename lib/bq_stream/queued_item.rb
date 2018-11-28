@@ -26,7 +26,7 @@ module BqStream
     end
 
     def self.indexed_columns
-      %i()
+      %i(sent_to_bq)
     end
 
     def self.schema_match?
