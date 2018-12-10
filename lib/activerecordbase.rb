@@ -53,11 +53,15 @@ class ActiveRecord::Base
     end
   end
 
+  def create_queued_item(key, value)
+    new_val = (self.class.type_for_attribute(key).type == :datetime ? value.in_time_zone(BqStream.timezone) : value).to_s
+    BqStream::QueuedItem.create(table_name: self.class.to_s, record_id: id, attr: key, new_value: new_val)
+  end
+
   def queue_create(attributes_of_interest)
     attributes.each do |k, v|
       next unless attributes_of_interest.include?(k.to_sym) && !v.nil?
-      # new_val = (self.class.type_for_attribute(k).type == :datetime ? v.in_time_zone(BqStream.timezone) : v).to_s
-      BqStream::QueuedItem.create(table_name: self.class.to_s, record_id: id, attr: k, new_value: v.to_s)
+      create_queued_item(k, v)
     end
   rescue Exception => e
     BqStream.log(:error, "#{Time.now}: EXCEPTION: #{e}")
@@ -66,8 +70,7 @@ class ActiveRecord::Base
   def queue_update(attributes_of_interest)
     transaction_changed_attributes.each do |k, v|
       next unless attributes_of_interest.include?(k.to_sym)
-      # new_val = (self.class.type_for_attribute(k).type == :datetime ? v.in_time_zone(BqStream.timezone) : v).to_s
-      BqStream::QueuedItem.create(table_name: self.class.to_s, record_id: id, attr: k, new_value: v.to_s)
+      create_queued_item(self, k, v)
     end
   rescue Exception => e
     BqStream.log(:error, "#{Time.now}: EXCEPTION: #{e}")

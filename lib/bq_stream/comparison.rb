@@ -131,8 +131,8 @@ module BqStream
             db.send(attr) != (val.nil? ? nil : val.to_d.round(5))
         @fails << "  #{attr}: #{db.send(attr)} != #{val.nil? ? 'nil' : val.to_d}"
       elsif klass.columns_hash[attr].type == :datetime &&
-            db.send(attr).try(:utc) != (val.nil? ? nil : Time.at(val.to_datetime).utc)
-        @fails << "  #{attr}: #{db.send(attr).try(:utc)} != #{val.nil? ? 'nil' : (Time.at(val.to_datetime).utc)}"
+            db.send(attr).try(:in_time_zone, BqStream.timezone) != (val.nil? ? nil : Time.at(val.to_datetime).in_time_zone(BqStream.timezone))
+        @fails << "  #{attr}: #{db.send(attr).try(:in_time_zone, BqStream.timezone)} != #{val.nil? ? 'nil' : (Time.at(val.to_datetime).in_time_zone(BqStream.timezone))}"
       end
     end
 
