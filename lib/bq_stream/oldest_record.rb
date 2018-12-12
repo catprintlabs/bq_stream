@@ -1,5 +1,7 @@
 module BqStream
   class OldestRecord < ActiveRecord::Base
+    # Runs through latest records for each table name in Oldestrecord
+    # filling buffer until reaching batch size; then writes to QueuedItem
     def self.update_bq_earliest
       # Clear the buffer, just in case it is not empty
       BqStream::QueuedItem.buffer.clear
@@ -12,12 +14,18 @@ module BqStream
       BqStream::QueuedItem.create_from_buffer
       # Clear the buffer after all is said and done
       BqStream::QueuedItem.buffer.clear
+
+      # TODO:
+      # Grab the table with the latest date updated (first if equal)
+      # Only run one table per qequeue process
     end
 
+    # Return a unique list of table names excluding revision row
     def self.table_names
       where("table_name <> '! revision !'").pluck(:table_name).uniq
     end
 
+    # Adds record to buffer
     def buffer_attribute(r)
       BqStream::QueuedItem.buffer << { table_name: table_name,
                                        record_id: r.id,
@@ -69,6 +77,8 @@ module BqStream
       end
     end
 
+    # Grabs the next record of given table name and any other records
+    # of the same table that have the same created_at
     def self.records_to_write(table, earliest_update)
       # Grab the created_at of the record before the record with
       # the earliest update. This is done instead of grabbing the record itself,
@@ -81,8 +91,13 @@ module BqStream
       # Get any records that have the next_created_at date
       # These are to be the next_records to be processed
       table.where('created_at = ?', next_created_at) if next_created_at
+      
+      # TODO:
+      # Add notes to speed this up
     end
 
+    # Builds OldestRecord table
+    # Drops and rebuilds table if it doesn't exist or after eaach new deployment  
     def self.build_table
       return if connection.tables.include?(BqStream.oldest_record_table_name) && find_by(table_name: '! revision !', attr: `cat #{File.expand_path ''}/REVISION`)
       self.table_name = BqStream.oldest_record_table_name

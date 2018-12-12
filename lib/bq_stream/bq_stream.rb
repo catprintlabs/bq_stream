@@ -74,6 +74,7 @@ module BqStream
                             undef: :replace, replace: '_') rescue nil
     end
 
+    # Gather oldest records, if enabled, into QueuedItem table and send records to BigQuery 
     def dequeue_items
       log_code = rand(2**256).to_s(36)[0..7]
       log(:info, "#{Time.now}: ***** Dequeue Items Started ***** #{log_code}")
