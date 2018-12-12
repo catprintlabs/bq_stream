@@ -3,21 +3,30 @@ module BqStream
     # Runs through latest records for each table name in Oldestrecord
     # filling buffer until reaching batch size; then writes to QueuedItem
     def self.update_bq_earliest
-      # Clear the buffer, just in case it is not empty
-      BqStream::QueuedItem.buffer.clear
-      # Check to see if room availble in batch and if rows exist
-      until BqStream::QueuedItem.available_rows.zero? || table_names.empty?
-        # Cycle through table names and grab latest records for each one
-        table_names.each { |table| update_oldest_records_for(table) }
-      end
-      # Create Queued Items from the data in the buffer
-      BqStream::QueuedItem.create_from_buffer
-      # Clear the buffer after all is said and done
-      BqStream::QueuedItem.buffer.clear
+      # # Clear the buffer, just in case it is not empty
+      # BqStream::QueuedItem.buffer.clear
+      # # Check to see if room availble in batch and if rows exist
+      # until BqStream::QueuedItem.available_rows.zero? || table_names.empty?
+      #   # Cycle through table names and grab latest records for each one
+      #   table_names.each { |table| update_oldest_records_for(table) }
+      # end
+      # # Create Queued Items from the data in the buffer
+      # BqStream::QueuedItem.create_from_buffer
+      # # Clear the buffer after all is said and done
+      # BqStream::QueuedItem.buffer.clear
 
       # TODO:
       # Grab the table with the latest date updated (first if equal)
       # Only run one table per qequeue process
+
+      BqStream::QueuedItem.buffer.clear
+      unless BqStream::QueuedItem.available_rows.zero? || table_names.empty?
+        next_table =
+          where.not(bq_earliest_update: nil).order(:bq_earliest_update).last.table_name
+        update_oldest_records_for(next_table)
+      end
+      BqStream::QueuedItem.create_from_buffer
+      BqStream::QueuedItem.buffer.clear
     end
 
     # Return a unique list of table names excluding revision row
@@ -47,7 +56,7 @@ module BqStream
                    "count #{oldest_attr_recs.count}")
       # Grab the next records back in time. This will most likely be one record,
       # unless there are records create at the exact same time
-      next_records = records_to_write(table.constantize, earliest_update)
+      next_records = records_to_write(table.constantize, earliest_update, oldest_attr_recs)
       BqStream.log(:info, "#{Time.now}: $$$$$ Earliest Time #{earliest_update}"\
                    " Blank? #{earliest_update.blank?} $$$$$")
       # Check if we have any records to be queued for BigQuery
@@ -79,21 +88,36 @@ module BqStream
 
     # Grabs the next record of given table name and any other records
     # of the same table that have the same created_at
-    def self.records_to_write(table, earliest_update)
-      # Grab the created_at of the record before the record with
-      # the earliest update. This is done instead of grabbing the record itself,
-      # in case more than one was created at the same time
-      next_created_at = table.where(
-        'created_at >= ? AND created_at < ?',
-        BqStream.back_date, earliest_update || Time.now
-      ).order('created_at DESC').pluck(:created_at).first
+    def self.records_to_write(table, earliest_update, oldest_attr_recs)
+      # # Grab the created_at of the record before the record with
+      # # the earliest update. This is done instead of grabbing the record itself,
+      # # in case more than one was created at the same time
+      # next_created_at = table.where(
+      #   'created_at >= ? AND created_at < ?',
+      #   BqStream.back_date, earliest_update || Time.now
+      # ).order('created_at DESC').pluck(:created_at).first
 
-      # Get any records that have the next_created_at date
-      # These are to be the next_records to be processed
-      table.where('created_at = ?', next_created_at) if next_created_at
+      # # Get any records that have the next_created_at date
+      # # These are to be the next_records to be processed
+      # table.where('created_at = ?', next_created_at) if next_created_at
       
       # TODO:
-      # Add notes to speed this up
+      # Calculate how many records can be grabbed to fill the buffer
+      # (BqStream::QueuedItem.available_rows / oldest_attr_recs.count)
+      # Get the earliest created_at from the earliest record that can be put into buffer
+      # Return all records that equal to earliest created_at until the earliest_update
+
+      record_count = BqStream::QueuedItem.available_rows / oldest_attr_recs.count
+
+      earliest_created_at = table.where(
+        'created_at >= ? AND created_at < ?',
+        BqStream.back_date, earliest_update || Time.now
+      ).order('created_at DESC').pluck(:created_at).first(record_count).last
+      
+      if earliest_created_at 
+        table.where('created_at >= ? AND created_at < ?',
+                    earliest_created_at, earliest_update || Time.now)
+      end
     end
 
     # Builds OldestRecord table

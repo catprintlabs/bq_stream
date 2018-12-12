@@ -387,7 +387,7 @@ describe BqStream do
                    { table_name: 'TableThird',
                      record_id: @old_record.id,
                      attr: 'updated_at',
-                     new_value: "2016-09-21 04:00:00 UTC", # This is in UTC since this value was created prior to BqStream being initialized
+                     new_value: '2016-09-21 04:00:00 UTC', # This is in UTC since this value was created prior to BqStream being initialized
                      updated_at: Time.parse('2016-12-31 19:00:00') },
                    { table_name: 'TableThird',
                      record_id: @old_record.id,
@@ -509,13 +509,108 @@ describe BqStream do
                     'bq_earliest_update' => @time_stamp.to_s }])
       end
 
-      it 'should update oldest records' do
+      it 'should gradually work through updating oldest records' do
+        BqStream.dequeue_items
+        expect(BqStream::OldestRecord.all.as_json)
+          .to eq([{ 'id' => 1,
+                    'table_name' => '! revision !',
+                    'attr' => '',
+                    'bq_earliest_update' => nil },
+                  { 'id' => 2,
+                    'table_name' => 'TableThird',
+                    'attr' => 'notes',
+                    'bq_earliest_update' => '2016-09-21 04:00:00 UTC' },
+                  { 'id' => 3,
+                    'table_name' => 'TableFirst',
+                    'attr' => 'name',
+                    'bq_earliest_update' => '2017-01-01 00:00:00 UTC' },
+                  { 'id' => 4,
+                    'table_name' => 'TableFirst',
+                    'attr' => 'created_at',
+                    'bq_earliest_update' => '2017-01-01 00:00:00 UTC' },
+                  { 'id' => 5,
+                    'table_name' => 'TableSecond',
+                    'attr' => 'name',
+                    'bq_earliest_update' => '2017-01-01 00:00:00 UTC' },
+                  { 'id' => 6,
+                    'table_name' => 'TableFirst',
+                    'attr' => 'description',
+                    'bq_earliest_update' => '2017-01-01 00:00:00 UTC' },
+                  { 'id' => 7,
+                    'table_name' => 'TableThird',
+                    'attr' => 'updated_at',
+                    'bq_earliest_update' => '2016-09-21 04:00:00 UTC' },
+                  { 'id' => 8,
+                    'table_name' => 'TableThird',
+                    'attr' => 'name',
+                    'bq_earliest_update' => '2016-09-21 04:00:00 UTC' },
+                  { 'id' => 9,
+                    'table_name' => 'TableFirst',
+                    'attr' => 'id',
+                    'bq_earliest_update' => '2017-01-01 00:00:00 UTC' },
+                  { 'id' => 10,
+                    'table_name' => 'TableFirst',
+                    'attr' => 'required',
+                    'bq_earliest_update' => '2017-01-01 00:00:00 UTC' },
+                  { 'id' => 11,
+                    'table_name' => 'TableSecond',
+                    'attr' => 'status',
+                    'bq_earliest_update' => '2017-01-01 00:00:00 UTC' },
+                  { 'id' => 12,
+                    'table_name' => 'TableFirst',
+                    'attr' => 'updated_at',
+                    'bq_earliest_update' => '2017-01-01 00:00:00 UTC' }])
+        BqStream.dequeue_items
+        expect(BqStream::OldestRecord.all.as_json)
+          .to eq([{ 'id' => 1,
+                    'table_name' => '! revision !',
+                    'attr' => '',
+                    'bq_earliest_update' => nil },
+                  { 'id' => 2,
+                    'table_name' => 'TableThird',
+                    'attr' => 'notes',
+                    'bq_earliest_update' => '2016-09-21 04:00:00 UTC' },
+                  { 'id' => 5,
+                    'table_name' => 'TableSecond',
+                    'attr' => 'name',
+                    'bq_earliest_update' => '2017-01-01 00:00:00 UTC' },
+                  { 'id' => 7,
+                    'table_name' => 'TableThird',
+                    'attr' => 'updated_at',
+                    'bq_earliest_update' => '2016-09-21 04:00:00 UTC' },
+                  { 'id' => 8,
+                    'table_name' => 'TableThird',
+                    'attr' => 'name',
+                    'bq_earliest_update' => '2016-09-21 04:00:00 UTC' },
+                  { 'id' => 11,
+                    'table_name' => 'TableSecond',
+                    'attr' => 'status',
+                    'bq_earliest_update' => '2017-01-01 00:00:00 UTC' }])
+        BqStream.dequeue_items
+        expect(BqStream::OldestRecord.all.as_json)
+          .to eq([{ 'id' => 1,
+                    'table_name' => '! revision !',
+                    'attr' => '',
+                    'bq_earliest_update'=>nil },
+                  { 'id' => 2,
+                    'table_name' => 'TableThird',
+                    'attr' => 'notes',
+                    'bq_earliest_update' => '2016-09-21 04:00:00 UTC' },
+                  { 'id' => 7,
+                    'table_name' => 'TableThird',
+                    'attr' => 'updated_at',
+                    'bq_earliest_update' => '2016-09-21 04:00:00 UTC' },
+                  { 'id' => 8,
+                    'table_name' => 'TableThird',
+                    'attr' => 'name',
+                    'bq_earliest_update' => '2016-09-21 04:00:00 UTC' }])
         BqStream.dequeue_items
         expect(BqStream::OldestRecord.all.as_json)
           .to eq([{ 'id' => 1,
                     'table_name' => '! revision !',
                     'attr' => '',
                     'bq_earliest_update' => nil }])
+           
       end
     end
   end
