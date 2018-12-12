@@ -22,8 +22,8 @@ module BqStream
       BqStream::QueuedItem.buffer.clear
       unless BqStream::QueuedItem.available_rows.zero? || table_names.empty?
         next_table =
-          where.not(bq_earliest_update: nil).order(:bq_earliest_update).last.table_name
-        update_oldest_records_for(next_table)
+          where("table_name <> '! revision !'").order(:bq_earliest_update).last.table_name || nil
+        update_oldest_records_for(next_table) if next_table
       end
       BqStream::QueuedItem.create_from_buffer
       BqStream::QueuedItem.buffer.clear
@@ -51,7 +51,7 @@ module BqStream
       # Grab the earliest bq_earliest_update (datetime)
       # for given rows in given table name
       earliest_update =
-        oldest_attr_recs.map(&:bq_earliest_update).reject(&:nil?).uniq.min
+        oldest_attr_recs.map(&:bq_earliest_update).compact.min
       BqStream.log(:info, "#{Time.now}: Table #{table} "\
                    "count #{oldest_attr_recs.count}")
       # Grab the next records back in time. This will most likely be one record,
