@@ -174,7 +174,6 @@ describe BqStream do
       expect(BqStream.key).to eq('key')
       expect(BqStream.project_id).to eq('project_id')
       expect(BqStream.dataset).to_not eq('production')
-      expect(BqStream.queued_items_table_name).to eq('queued_items')
       expect(BqStream.bq_table_name).to eq('bq_datastream')
       expect(BqStream.back_date).to eq('2016-09-21 00:00:00.000000000 +0000')
       expect(BqStream.timezone).to eq('UTC')

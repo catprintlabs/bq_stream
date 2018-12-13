@@ -92,20 +92,6 @@ module BqStream
       table.where('created_at = ?', next_created_at) if next_created_at
     end
 
-    # Builds OldestRecord table
-    # Drops and rebuilds table if it doesn't exist or after eaach new deployment
-    def self.build_table
-      return if connection.tables.include?(BqStream.oldest_record_table_name) && find_by(table_name: '! revision !', attr: `cat #{File.expand_path ''}/REVISION`)
-      self.table_name = BqStream.oldest_record_table_name
-      connection.create_table(table_name, force: true) do |t|
-        t.string   :table_name
-        t.string   :attr
-        t.datetime :bq_earliest_update
-      end
-
-      create(table_name: '! revision !', attr: `cat #{File.expand_path ''}/REVISION`)
-    end
-
     do_not_synchronize rescue nil # if Hyperloop is running
   end
 end

@@ -9,8 +9,6 @@ module BqStream
   define_setting :key
   define_setting :project_id
   define_setting :dataset
-  define_setting :queued_items_table_name, 'queued_items'
-  define_setting :oldest_record_table_name, 'oldest_records'
   define_setting :bq_table_name, 'bq_datastream'
   define_setting :back_date, nil
   define_setting :batch_size, 1000
@@ -44,8 +42,6 @@ module BqStream
     end
 
     def config_initialized
-      QueuedItem.build_table
-      OldestRecord.build_table
       create_bq_writer
       create_bq_dataset unless @bq_writer.datasets_formatted.include?(dataset)
       create_bq_table unless @bq_writer.tables_formatted.include?(bq_table_name)
@@ -53,7 +49,9 @@ module BqStream
     end
 
     def initialize_old_records
-      log(:info, "#{Time.now}: $$$$$$$$$$ Start Init Old Records $$$$$$$$$$")
+      OldestRecord.delete_all
+      OldestRecord.create(table_name: '! revision !', attr: `cat #{File.expand_path ''}/REVISION`)
+
       old_records = @bq_writer.query('SELECT table_name, attr, min(updated_at) '\
                                      'as bq_earliest_update FROM '\
                                      "[#{project_id}:#{dataset}.#{bq_table_name}] "\
@@ -66,7 +64,6 @@ module BqStream
           rec.update(bq_earliest_update: Time.at(r['f'][2]['v'].to_f))
         end
       end if old_records['rows']
-      log(:info, "#{Time.now}: $$$$$$$$$$ End Init Old Records $$$$$$$$$$")
     end
 
     def encode_value(value)
@@ -79,17 +76,13 @@ module BqStream
       log(:info, "#{Time.now}: ***** Dequeue Items Started ***** #{log_code}")
       OldestRecord.update_bq_earliest if back_date
       create_bq_writer
-      log(:info, "#{Time.now}: ***** Set Records ***** #{log_code}")
       records = QueuedItem.where(sent_to_bq: nil).limit(batch_size)
-      log(:info, "#{Time.now}: ***** Package #{records.count} Records ***** #{log_code}")
       data = records.collect do |i|
         new_val = encode_value(i.new_value) rescue nil
         { table_name: i.table_name, record_id: i.record_id, attr: i.attr,
           new_value: new_val ? new_val : i.new_value, updated_at: i.updated_at }
       end
-      log(:info, "#{Time.now}: ***** Insert Records ***** #{log_code}")
       @bq_writer.insert(bq_table_name, data) unless data.empty?
-      log(:info, "#{Time.now}: ***** Update Records ***** #{log_code}")
       records.update_all(sent_to_bq: true)
       # QueuedItem.where(sent_to_bq: true).delete_all # removing delete for testing TODO: reinstate after test
       log(:info, "#{Time.now}: ***** Dequeue Items Ended ***** #{log_code}")
