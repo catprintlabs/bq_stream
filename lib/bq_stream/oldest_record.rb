@@ -23,10 +23,11 @@ module BqStream
 
     # Adds record to buffer
     def buffer_attribute(r)
+      new_val = table_name.constantize.type_for_attribute(attr).type == :datetime ? r[attr].in_time_zone(BqStream.timezone) : value.to_s
       BqStream::QueuedItem.buffer << { table_name: table_name,
                                        record_id: r.id,
                                        attr: attr,
-                                       new_value: r[attr],
+                                       new_value: new_val,
                                        updated_at: r.created_at }
     end
 
