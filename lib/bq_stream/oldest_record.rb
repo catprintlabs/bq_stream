@@ -31,6 +31,8 @@ module BqStream
                                        updated_at: r.created_at }
     end
 
+    # Grabs next available record to be written, writes to buffer
+    # and properly update OldestRecord rows
     def self.update_oldest_records_for(table)
       BqStream.log(:info, "#{Time.now}: >>>>> Update Oldest Records "\
                    "For #{table} Starting <<<<<")
