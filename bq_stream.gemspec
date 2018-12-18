@@ -41,6 +41,7 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency 'rspec', '~> 3.2'
   spec.add_development_dependency 'sqlite3'
   spec.add_development_dependency 'timecop'
+  spec.add_development_dependency 'database_cleaner'
   spec.add_dependency 'activerecord'
   spec.add_dependency 'dotenv'
 end

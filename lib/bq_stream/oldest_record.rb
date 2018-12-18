@@ -1,5 +1,7 @@
 module BqStream
   class OldestRecord < ActiveRecord::Base
+    # Runs through latest records for each table name in Oldestrecord
+    # filling buffer until reaching batch size; then writes to QueuedItem
     def self.update_bq_earliest
       # Clear the buffer, just in case it is not empty
       BqStream::QueuedItem.buffer.clear
@@ -14,18 +16,23 @@ module BqStream
       BqStream::QueuedItem.buffer.clear
     end
 
+    # Return a unique list of table names excluding revision row
     def self.table_names
       where("table_name <> '! revision !'").pluck(:table_name).uniq
     end
 
+    # Adds record to buffer
     def buffer_attribute(r)
+      new_val = table_name.constantize.type_for_attribute(attr).type == :datetime && !r[attr].nil? ? r[attr].in_time_zone(BqStream.timezone) : r[attr].to_s
       BqStream::QueuedItem.buffer << { table_name: table_name,
                                        record_id: r.id,
                                        attr: attr,
-                                       new_value: r[attr],
+                                       new_value: new_val,
                                        updated_at: r.created_at }
     end
 
+    # Grabs next available record to be written, writes to buffer
+    # and properly update OldestRecord rows
     def self.update_oldest_records_for(table)
       BqStream.log(:info, "#{Time.now}: >>>>> Update Oldest Records "\
                    "For #{table} Starting <<<<<")
@@ -34,7 +41,7 @@ module BqStream
       # Grab the earliest bq_earliest_update (datetime)
       # for given rows in given table name
       earliest_update =
-        oldest_attr_recs.map(&:bq_earliest_update).reject(&:nil?).uniq.min
+        oldest_attr_recs.map(&:bq_earliest_update).compact.min
       BqStream.log(:info, "#{Time.now}: Table #{table} "\
                    "count #{oldest_attr_recs.count}")
       # Grab the next records back in time. This will most likely be one record,
@@ -69,6 +76,8 @@ module BqStream
       end
     end
 
+    # Grabs the next record of given table name and any other records
+    # of the same table that have the same created_at
     def self.records_to_write(table, earliest_update)
       # Grab the created_at of the record before the record with
       # the earliest update. This is done instead of grabbing the record itself,
@@ -76,23 +85,11 @@ module BqStream
       next_created_at = table.where(
         'created_at >= ? AND created_at < ?',
         BqStream.back_date, earliest_update || Time.now
-      ).order('created_at DESC').pluck(:created_at).first
+      ).order('created_at DESC').first.try(:created_at)
 
       # Get any records that have the next_created_at date
       # These are to be the next_records to be processed
       table.where('created_at = ?', next_created_at) if next_created_at
-    end
-
-    def self.build_table
-      return if connection.tables.include?(BqStream.oldest_record_table_name) && find_by(table_name: '! revision !', attr: `cat #{File.expand_path ''}/REVISION`)
-      self.table_name = BqStream.oldest_record_table_name
-      connection.create_table(table_name, force: true) do |t|
-        t.string   :table_name
-        t.string   :attr
-        t.datetime :bq_earliest_update
-      end
-
-        create(table_name: '! revision !', attr: `cat #{File.expand_path ''}/REVISION`)
     end
 
     do_not_synchronize rescue nil # if Hyperloop is running

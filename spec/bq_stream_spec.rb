@@ -1,7 +1,32 @@
 require 'spec_helper'
+require 'database_cleaner'
 
 describe BqStream do
   before(:all) do
+    class QueuedItem < ActiveRecord::Base
+      def self.build_table
+        connection.create_table :queued_items, force: true do |t|
+          t.string    :table_name
+          t.integer   :record_id
+          t.string    :attr
+          t.binary    :new_value
+          t.datetime  :updated_at
+          t.boolean   :sent_to_bq
+          t.index     :sent_to_bq
+        end
+      end
+    end
+
+    class OldestRecord < ActiveRecord::Base
+      def self.build_table
+        connection.create_table :oldest_records, force: true do |t|
+          t.string   :table_name
+          t.string   :attr
+          t.datetime :bq_earliest_update
+        end
+      end
+    end
+
     class TableFirst < ActiveRecord::Base
       def self.build_table
         connection.create_table :table_firsts, force: true do |t|
@@ -46,6 +71,8 @@ describe BqStream do
       end
     end
 
+    QueuedItem.build_table
+    OldestRecord.build_table
     TableFirst.build_table
     TableSecond.build_table
     TableThird.build_table
@@ -69,6 +96,7 @@ describe BqStream do
   end
 
   before(:each) do
+    DatabaseCleaner.clean
     BigQuery::Client.class_eval do
       attr_accessor :initial_args
       attr_reader :inserted_records, :bq_table_columns, :bq_datasets
@@ -79,30 +107,30 @@ describe BqStream do
         @initial_args = args
       end
 
-      def insert(*args)
+       def insert(*args)
         args[1].each do |i|
           i[:updated_at] = Time.now
         end
         inserted_records << [args]
       end
 
-      def create_table(*args)
+       def create_table(*args)
         bq_table_columns << [args]
       end
 
-      def create_dataset(*args)
+       def create_dataset(*args)
         bq_datasets << [args]
       end
 
-      def datasets_formatted
+       def datasets_formatted
         []
       end
 
-      def tables_formatted
+       def tables_formatted
         []
       end
 
-      def query(_q)
+       def query(_q)
         { 'kind' => 'bigquery#queryResponse',
           'schema' => { 'fields' =>
             [{ 'name' => 'table_name', 'type' => 'STRING',
@@ -145,36 +173,35 @@ describe BqStream do
       end
     end
 
-    BqStream.class_eval do
+     BqStream.class_eval do
       class << self
         attr_reader :bq_writer
       end
     end
 
-    BqStream.configuration do |config|
+     BqStream.configuration do |config|
       config.client_id = 'client_id'
       config.service_email = 'service_email'
       config.key = 'key'
       config.project_id = 'project_id'
       config.dataset = 'dataset'
-      config.back_date = Time.parse('2016-09-20 20:00:00').in_time_zone(BqStream.timezone)
+      config.back_date = Time.parse('2016-09-20 20:00:00').in_time_zone('UTC')
       config.timezone = 'UTC'
     end
     @time_stamp = Time.now.in_time_zone(BqStream.timezone)
   end
 
-  it 'has a version number' do
+   it 'has a version number' do
     expect(BqStream::VERSION).not_to be nil
   end
 
-  context 'during configuration' do
+   context 'during configuration' do    
     it 'can be configured' do
       expect(BqStream.client_id).to eq('client_id')
       expect(BqStream.service_email).to eq('service_email')
       expect(BqStream.key).to eq('key')
       expect(BqStream.project_id).to eq('project_id')
       expect(BqStream.dataset).to_not eq('production')
-      expect(BqStream.queued_items_table_name).to eq('queued_items')
       expect(BqStream.bq_table_name).to eq('bq_datastream')
       expect(BqStream.back_date).to eq('2016-09-21 00:00:00.000000000 +0000')
       expect(BqStream.timezone).to eq('UTC')
@@ -182,14 +209,15 @@ describe BqStream do
       expect(BqStream::OldestRecord.all).not_to be_empty
     end
 
-    it 'should create the bigquery dataset' do
+     it 'should create the bigquery dataset' do
       expect(BqStream.bq_writer.bq_datasets)
         .to eq([[['dataset']]])
     end
 
-    it 'should return an existing bq table and not create a new table' do
-      @bq_writer.stub(:tables_formatted) { ['bq_datastream'] }
-      BqStream.create_bq_table unless @bq_writer
+     it 'should return an existing bq table and not create a new table' do
+      bq_writer = double(:bq_writer)
+      allow(bq_writer).to receive(:tables_formatted) { ['bq_datastream'] }
+      BqStream.create_bq_table unless bq_writer
                                       .tables_formatted
                                       .include?(BqStream.bq_table_name)
       expect(BqStream.bq_writer.bq_table_columns)
@@ -201,7 +229,7 @@ describe BqStream do
                     updated_at: { type: 'TIMESTAMP', mode: 'REQUIRED' } }]]])
     end
 
-    it 'should create the big query table' do
+     it 'should create the big query table' do
       expect(BqStream.bq_writer.bq_table_columns)
         .to eq([[['bq_datastream',
                   { table_name: { type: 'STRING', mode: 'REQUIRED' },
@@ -212,21 +240,22 @@ describe BqStream do
     end
   end
 
-  context 'should be able to queue and dequeue items from tables' do
+   context 'should be able to queue and dequeue items from tables' do
     before(:all) do
       class TableFirst < ActiveRecord::Base
         bq_attributes :all
       end
 
-      class TableSecond < ActiveRecord::Base
+       class TableSecond < ActiveRecord::Base
         bq_attributes(only: [:name, :status])
       end
 
-      class TableThird < ActiveRecord::Base
+       class TableThird < ActiveRecord::Base
         bq_attributes(except: [:id, :order, :created_at])
       end
     end
-    before(:each) do
+
+     before(:each) do
       @first_record =
         TableFirst.create(name: 'primary record',
                           description: 'first into the table',
@@ -246,12 +275,14 @@ describe BqStream do
       @second_record.destroy
     end
 
-    after(:each) do
-      BqStream::QueuedItem.destroy_all
-      BqStream::OldestRecord.destroy_all
+     after(:each) do
+      QueuedItem.destroy_all
+      OldestRecord.destroy_all
+      ActiveRecord::Base.connection.execute("DELETE from sqlite_sequence where name = 'queued_items'") 
+      ActiveRecord::Base.connection.execute("DELETE from sqlite_sequence where name = 'oldest_records'") 
     end
 
-    it 'should write queued item to table when bq_attributes is called' do
+     it 'should write queued item to table when bq_attributes is called' do
       expect(BqStream::QueuedItem.all.as_json)
         .to eq([{
                  'id' => 1,
@@ -363,10 +394,8 @@ describe BqStream do
                 }])
     end
 
-    it 'should send queued items to bigquery' do
-    # it 'should send queued items to bigquery and then delete them' do # TODO: reinstate after test
-        BqStream.dequeue_items
-      # expect(BqStream::QueuedItem.all).to be_empty # TODO: reinstate after test
+     it 'should send queued items to bigquery' do
+      BqStream.dequeue_items
       expect(BqStream.bq_writer.initial_args)
         .to eq([
                  {
@@ -379,84 +408,84 @@ describe BqStream do
                ])
       expect(BqStream.bq_writer.inserted_records)
         .to eq([[['bq_datastream',
-                  [{ table_name: 'TableThird',
-                     record_id: @old_record.id,
-                     attr: 'notes',
-                     new_value: 'an old record',
-                     updated_at: Time.parse('2016-12-31 19:00:00') },
-                   { table_name: 'TableThird',
-                     record_id: @old_record.id,
-                     attr: 'updated_at',
-                     new_value: "2016-09-21 04:00:00 UTC", # This is in UTC since this value was created prior to BqStream being initialized
-                     updated_at: Time.parse('2016-12-31 19:00:00') },
-                   { table_name: 'TableThird',
-                     record_id: @old_record.id,
-                     attr: 'name',
-                     new_value: 'old record',
-                     updated_at: Time.parse('2016-12-31 19:00:00') },
-                   { table_name: 'TableFirst',
-                     record_id: @first_record.id,
-                     attr: 'id',
-                     new_value: @first_record.id.to_s,
-                     updated_at: Time.parse('2016-12-31 19:00:00') },
-                   { table_name: 'TableFirst',
-                     record_id: @first_record.id,
-                     attr: 'name',
-                     new_value: 'primary record',
-                     updated_at: Time.parse('2016-12-31 19:00:00') },
-                   { table_name: 'TableFirst',
-                     record_id: @first_record.id,
-                     attr: 'description',
-                     new_value: 'first into the table',
-                     updated_at: Time.parse('2016-12-31 19:00:00') },
-                   { table_name: 'TableFirst',
-                     record_id: @first_record.id,
-                     attr: 'required',
-                     new_value: 'true',
-                     updated_at: Time.parse('2016-12-31 19:00:00') },
-                   { table_name: 'TableFirst',
-                     record_id: @first_record.id,
-                     attr: 'created_at',
-                     new_value: @time_stamp.to_s,
-                     updated_at: Time.parse('2016-12-31 19:00:00') },
-                   { table_name: 'TableFirst',
-                     record_id: @first_record.id,
-                     attr: 'updated_at',
-                     new_value: @time_stamp.to_s,
-                     updated_at: Time.parse('2016-12-31 19:00:00') },
-                   { table_name: 'TableSecond',
-                     record_id: @second_record.id,
-                     attr: 'name',
-                     new_value: 'secondary record',
-                     updated_at: Time.parse('2016-12-31 19:00:00') },
-                   { table_name: 'TableSecond',
-                     record_id: @second_record.id,
-                     attr: 'status',
-                     new_value: 'active',
-                     updated_at: Time.parse('2016-12-31 19:00:00') },
-                   { table_name: 'TableThird',
-                     record_id: @third_record.id,
-                     attr: 'name',
-                     new_value: 'third record',
-                     updated_at: Time.parse('2016-12-31 19:00:00') },
-                   { table_name: 'TableThird',
-                     record_id: @third_record.id,
-                     attr: 'notes',
-                     new_value: '12.50',
-                     updated_at: Time.parse('2016-12-31 19:00:00') },
-                   { table_name: 'TableThird',
-                     record_id: @third_record.id,
-                     attr: 'updated_at',
-                     new_value: @time_stamp.to_s,
-                     updated_at: Time.parse('2016-12-31 19:00:00') },
-                   { table_name: 'TableSecond',
-                     record_id: @second_record.id,
-                     attr: 'Destroyed',
-                     new_value: 'True',
-                     updated_at: Time.parse('2016-12-31 19:00:00') }]]]])
+          [{ table_name: 'TableThird',
+            record_id: @old_record.id,
+            attr: 'notes',
+            new_value: 'an old record',
+            updated_at: Time.parse('2016-12-31 19:00:00') },
+          { table_name: 'TableThird',
+            record_id: @old_record.id,
+            attr: 'updated_at',
+            new_value: '2016-09-21 04:00:00 UTC',
+            updated_at: Time.parse('2016-12-31 19:00:00') },
+          { table_name: 'TableThird',
+            record_id: @old_record.id,
+            attr: 'name',
+            new_value: 'old record',
+            updated_at: Time.parse('2016-12-31 19:00:00') },
+          { table_name: 'TableFirst',
+            record_id: @first_record.id,
+            attr: 'id',
+            new_value: @first_record.id.to_s,
+            updated_at: Time.parse('2016-12-31 19:00:00') },
+          { table_name: 'TableFirst',
+            record_id: @first_record.id,
+            attr: 'name',
+            new_value: 'primary record',
+            updated_at: Time.parse('2016-12-31 19:00:00') },
+          { table_name: 'TableFirst',
+            record_id: @first_record.id,
+            attr: 'description',
+            new_value: 'first into the table',
+            updated_at: Time.parse('2016-12-31 19:00:00') },
+          { table_name: 'TableFirst',
+            record_id: @first_record.id,
+            attr: 'required',
+            new_value: 'true',
+            updated_at: Time.parse('2016-12-31 19:00:00') },
+          { table_name: 'TableFirst',
+            record_id: @first_record.id,
+            attr: 'created_at',
+            new_value: @time_stamp.to_s,
+            updated_at: Time.parse('2016-12-31 19:00:00') },
+          { table_name: 'TableFirst',
+            record_id: @first_record.id,
+            attr: 'updated_at',
+            new_value: @time_stamp.to_s,
+            updated_at: Time.parse('2016-12-31 19:00:00') },
+          { table_name: 'TableSecond',
+            record_id: @second_record.id,
+            attr: 'name',
+            new_value: 'secondary record',
+            updated_at: Time.parse('2016-12-31 19:00:00') },
+          { table_name: 'TableSecond',
+            record_id: @second_record.id,
+            attr: 'status',
+            new_value: 'active',
+            updated_at: Time.parse('2016-12-31 19:00:00') },
+          { table_name: 'TableThird',
+            record_id: @third_record.id,
+            attr: 'name',
+            new_value: 'third record',
+            updated_at: Time.parse('2016-12-31 19:00:00') },
+          { table_name: 'TableThird',
+            record_id: @third_record.id,
+            attr: 'notes',
+            new_value: '12.50',
+            updated_at: Time.parse('2016-12-31 19:00:00') },
+          { table_name: 'TableThird',
+            record_id: @third_record.id,
+            attr: 'updated_at',
+            new_value: @time_stamp.to_s,
+            updated_at: Time.parse('2016-12-31 19:00:00') },
+          { table_name: 'TableSecond',
+            record_id: @second_record.id,
+            attr: 'Destroyed',
+            new_value: 'True',
+            updated_at: Time.parse('2016-12-31 19:00:00') }]]]])
     end
 
-    context 'oldest record table' do
+     context 'oldest record table' do
       it 'should write bigquery items to oldest record table' do
         expect(BqStream::OldestRecord.all.as_json)
           .to eq([{ 'id' => 1,
@@ -466,50 +495,50 @@ describe BqStream do
                   { 'id' => 2,
                     'table_name' => 'TableThird',
                     'attr' => 'notes',
-                    'bq_earliest_update' => @time_stamp.to_s },
+                    'bq_earliest_update' => Time.parse('2016-12-31 19:00:00') },
                   { 'id' => 3,
                     'table_name' => 'TableFirst',
                     'attr' => 'name',
-                    'bq_earliest_update' => @time_stamp.to_s },
+                    'bq_earliest_update' => Time.parse('2016-12-31 19:00:00') },
                   { 'id' => 4,
                     'table_name' => 'TableFirst',
                     'attr' => 'created_at',
-                    'bq_earliest_update' => @time_stamp.to_s },
+                    'bq_earliest_update' => Time.parse('2016-12-31 19:00:00') },
                   { 'id' => 5,
                     'table_name' => 'TableSecond',
                     'attr' => 'name',
-                    'bq_earliest_update' => @time_stamp.to_s },
+                    'bq_earliest_update' => Time.parse('2016-12-31 19:00:00') },
                   { 'id' => 6,
                     'table_name' => 'TableFirst',
                     'attr' => 'description',
-                    'bq_earliest_update' => @time_stamp.to_s },
+                    'bq_earliest_update' => Time.parse('2016-12-31 19:00:00') },
                   { 'id' => 7,
                     'table_name' => 'TableThird',
                     'attr' => 'updated_at',
-                    'bq_earliest_update' => @time_stamp.to_s },
+                    'bq_earliest_update' => Time.parse('2016-12-31 19:00:00') },
                   { 'id' => 8,
                     'table_name' => 'TableThird',
                     'attr' => 'name',
-                    'bq_earliest_update' => @time_stamp.to_s },
+                    'bq_earliest_update' => Time.parse('2016-12-31 19:00:00') },
                   { 'id' => 9,
                     'table_name' => 'TableFirst',
                     'attr' => 'id',
-                    'bq_earliest_update' => @time_stamp.to_s },
+                    'bq_earliest_update' => Time.parse('2016-12-31 19:00:00') },
                   { 'id' => 10,
                     'table_name' => 'TableFirst',
                     'attr' => 'required',
-                    'bq_earliest_update' => @time_stamp.to_s },
+                    'bq_earliest_update' => Time.parse('2016-12-31 19:00:00') },
                   { 'id' => 11,
                     'table_name' => 'TableSecond',
                     'attr' => 'status',
-                    'bq_earliest_update' => @time_stamp.to_s },
+                    'bq_earliest_update' => Time.parse('2016-12-31 19:00:00') },
                   { 'id' => 12,
                     'table_name' => 'TableFirst',
                     'attr' => 'updated_at',
-                    'bq_earliest_update' => @time_stamp.to_s }])
+                    'bq_earliest_update' => Time.parse('2016-12-31 19:00:00') }])
       end
 
-      it 'should update oldest records' do
+       it 'should update oldest records' do
         BqStream.dequeue_items
         expect(BqStream::OldestRecord.all.as_json)
           .to eq([{ 'id' => 1,
