@@ -70,7 +70,7 @@ class ActiveRecord::Base
   def queue_update(attributes_of_interest)
     transaction_changed_attributes.each do |k, v|
       next unless attributes_of_interest.include?(k.to_sym)
-      create_queued_item(self, k, v)
+      create_queued_item(k, v)
     end
   rescue Exception => e
     BqStream.log(:error, "#{Time.now}: EXCEPTION: #{e}")
