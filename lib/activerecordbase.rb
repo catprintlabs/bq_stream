@@ -60,7 +60,7 @@ class ActiveRecord::Base
 
   def queue_create(attributes_of_interest)
     attributes.each do |k, v|
-      next unless attributes_of_interest.include?(k.to_sym) && !v.nil?
+      next unless attributes_of_interest.include?(k.to_sym)
       create_queued_item(k, v)
     end
   rescue Exception => e

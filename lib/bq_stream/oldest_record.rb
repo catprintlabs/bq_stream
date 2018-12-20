@@ -24,6 +24,7 @@ module BqStream
     # Adds record to buffer
     def buffer_attribute(r)
       new_val = table_name.constantize.type_for_attribute(attr).type == :datetime && !r[attr].nil? ? r[attr].in_time_zone(BqStream.timezone) : r[attr].to_s
+      BqStream.log(:info, "#{Time.now}: Buffer #{table_name}, #{r.id}, #{attr}, #{new_val}, #{r.created_at}")
       BqStream::QueuedItem.buffer << { table_name: table_name,
                                        record_id: r.id,
                                        attr: attr,
@@ -42,13 +43,9 @@ module BqStream
       # for given rows in given table name
       earliest_update =
         oldest_attr_recs.map(&:bq_earliest_update).compact.min
-      BqStream.log(:info, "#{Time.now}: Table #{table} "\
-                   "count #{oldest_attr_recs.count}")
       # Grab the next records back in time. This will most likely be one record,
       # unless there are records create at the exact same time
       next_records = records_to_write(table.constantize, earliest_update)
-      BqStream.log(:info, "#{Time.now}: $$$$$ Earliest Time #{earliest_update}"\
-                   " Blank? #{earliest_update.blank?} $$$$$")
       # Check if we have any records to be queued for BigQuery
       if next_records.nil?
         BqStream.log(:info, "#{Time.now}: >>>>> Deleting & Returning <<<<<")
@@ -62,8 +59,6 @@ module BqStream
         oldest_attr_recs.each do |oldest_attr_rec|
           # ...with each of the next records to be written...
           next_records.each do |next_record|
-            BqStream.log(:info, "#{Time.now}: oldest_attr_recs id "\
-                         "#{next_record.id}")
             # ...place data into buffer based on attr of OldestRecord row
             oldest_attr_rec.buffer_attribute(next_record)
           end
