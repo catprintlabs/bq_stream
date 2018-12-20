@@ -57,6 +57,8 @@ module BqStream
         oldest_attr_recs.delete_all && return
       else
         # Cycle through gathered OldestRecord rows...
+        BqStream.log(:info, "#{Time.now}: oldest_attr_recs count: #{oldest_attr_recs.count}")
+        BqStream.log(:info, "#{Time.now}: next_records count: #{next_records.count}")
         oldest_attr_recs.each do |oldest_attr_rec|
           # ...with each of the next records to be written...
           next_records.each do |next_record|
