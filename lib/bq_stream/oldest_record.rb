@@ -37,6 +37,7 @@ module BqStream
     def self.update_oldest_records_for(table)
       BqStream.log(:info, "#{Time.now}: >>>>> Update Oldest Records "\
                    "For #{table} Starting <<<<<")
+      BqStream.log(:info, "#{Time.now}: Buffer: #{BqStream::QueuedItem.buffer.count} / #{BqStream::QueuedItem.available_rows}")
       # Grab all rows with the same table name
       oldest_attr_recs = where('table_name = ?', table)
       # Grab the earliest bq_earliest_update (datetime)
@@ -65,7 +66,7 @@ module BqStream
         end
         # Make all gathered OldestRecord rows to lastest created_at
         oldest_attr_recs.update_all(bq_earliest_update: next_records.first.created_at)
-        BqStream.log(:info, "#{Time.now}: #{BqStream::QueuedItem.buffer.count}")
+        BqStream.log(:info, "#{Time.now}: Buffer: #{BqStream::QueuedItem.buffer.count} / #{BqStream::QueuedItem.available_rows}")
         BqStream.log(:info, "#{Time.now}: >>>>> Update Oldest Records "\
                             "For #{table} Ending <<<<<")
       end
