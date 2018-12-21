@@ -3,12 +3,16 @@ module BqStream
     # Runs through latest records for each table name in Oldestrecord
     # filling buffer until reaching batch size; then writes to QueuedItem
     def self.update_bq_earliest
+      BqStream.log(:info, "#{Time.now}: Oldest Record count: #{count}")
       # Clear the buffer, just in case it is not empty
       BqStream::QueuedItem.buffer.clear
       # Check to see if room availble in batch and if rows exist
       until BqStream::QueuedItem.available_rows.zero? || table_names.empty?
         # Cycle through table names and grab latest records for each one
-        table_names.each { |table| update_oldest_records_for(table) }
+        table_names.each do |table|
+          BqStream.log(:info, "#{Time.now}: Oldest Record count before update_oldest_records_for #{table}: #{where('table_name = ?', table).count}")
+          update_oldest_records_for(table)
+        end
       end
       # Create Queued Items from the data in the buffer
       BqStream::QueuedItem.create_from_buffer
@@ -39,7 +43,10 @@ module BqStream
                    "For #{table} Starting <<<<<")
       BqStream.log(:info, "#{Time.now}: Buffer: #{BqStream::QueuedItem.buffer.count} / #{BqStream::QueuedItem.available_rows}")
       # Grab all rows with the same table name
+      BqStream.log(:info, "#{Time.now}: Oldest Record count: #{count}")
+      BqStream.log(:info, "#{Time.now}: Oldest Record count for #{table}: #{where('table_name = ?', table).count}")
       oldest_attr_recs = where('table_name = ?', table)
+      BqStream.log(:info, "#{Time.now}: Initial oldest_attr_recs count: #{oldest_attr_recs.count}")
       # Grab the earliest bq_earliest_update (datetime)
       # for given rows in given table name
       earliest_update =
@@ -68,6 +75,7 @@ module BqStream
         end
         # Make all gathered OldestRecord rows to lastest created_at
         oldest_attr_recs.update_all(bq_earliest_update: next_records.first.created_at)
+        BqStream.log(:info, "#{Time.now}: after update oldest_attr_recs count: #{oldest_attr_recs.count}")
         BqStream.log(:info, "#{Time.now}: Buffer: #{BqStream::QueuedItem.buffer.count} / #{BqStream::QueuedItem.available_rows}")
         BqStream.log(:info, "#{Time.now}: >>>>> Update Oldest Records "\
                             "For #{table} Ending <<<<<")

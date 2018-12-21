@@ -82,6 +82,7 @@ module BqStream
     def dequeue_items
       log_code = rand(2**256).to_s(36)[0..7]
       log(:info, "#{Time.now}: ***** Dequeue Items Started ***** #{log_code}")
+      log(:info, "#{Time.now}: In dequeue_items Oldest Record count: #{OldestRecord.count}")
       OldestRecord.update_bq_earliest if back_date
       create_bq_writer
       records = QueuedItem.where(sent_to_bq: nil).limit(batch_size)
