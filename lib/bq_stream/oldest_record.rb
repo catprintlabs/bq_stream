@@ -3,16 +3,23 @@ module BqStream
     # Runs through latest records for each table name in Oldestrecord
     # filling buffer until reaching batch size; then writes to QueuedItem
     def self.update_bq_earliest
-      BqStream.log(:info, "#{Time.now}: Oldest Record count: #{count}")
+      BqStream.log(:info, "#{Time.now}: Start of update_bq_earliest Oldest Record count: #{count}")
       # Clear the buffer, just in case it is not empty
       BqStream::QueuedItem.buffer.clear
       # Check to see if room availble in batch and if rows exist
       until BqStream::QueuedItem.available_rows.zero? || table_names.empty?
+        BqStream.log(:info, "#{Time.now}: Start, while there are available rows, Oldest Record count: #{count}")
+        BqStream.log(:info, "#{Time.now}: ***** Start current rows in OldestRecord *****")
+        each do |record|
+          BqStream.log(:info, "#{Time.now}: #{record.table_name} #{record.attr} #{record.bq_earliest_update}")
+        end
+        BqStream.log(:info, "#{Time.now}: ***** End current rows in OldestRecord *****")
         # Cycle through table names and grab latest records for each one
         table_names.each do |table|
           BqStream.log(:info, "#{Time.now}: Oldest Record count before update_oldest_records_for #{table}: #{where('table_name = ?', table).count}")
           update_oldest_records_for(table)
         end
+        BqStream.log(:info, "#{Time.now}: End, while there are available rows, Oldest Record count: #{count}")
       end
       # Create Queued Items from the data in the buffer
       BqStream::QueuedItem.create_from_buffer
