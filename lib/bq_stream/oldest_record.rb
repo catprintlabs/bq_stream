@@ -23,7 +23,7 @@ module BqStream
 
     # Adds record to buffer
     def buffer_attribute(r)
-      new_val = table_name.constantize.type_for_attribute(attr).type == :datetime && !r[attr].nil? ? r[attr].in_time_zone(BqStream.timezone) : r[attr].to_s
+      new_val = r[attr] && table_name.constantize.type_for_attribute(attr).type == :datetime ? r[attr].in_time_zone(BqStream.timezone) : r[attr].to_s
       BqStream.log(:info, "#{Time.now}: Buffer #{table_name}, #{r.id}, #{attr}, #{new_val}, #{r.created_at}")
       BqStream::QueuedItem.buffer << { table_name: table_name,
                                        record_id: r.id,
@@ -40,6 +40,7 @@ module BqStream
       BqStream.log(:info, "#{Time.now}: Buffer: #{BqStream::QueuedItem.buffer.count} / #{BqStream::QueuedItem.available_rows}")
       # Grab all rows with the same table name
       oldest_attr_recs = where('table_name = ?', table)
+      BqStream.log(:info, "#{Time.now}: Initial oldest_attr_recs count for #{table}: #{oldest_attr_recs.count}")
       # Grab the earliest bq_earliest_update (datetime)
       # for given rows in given table name
       earliest_update =

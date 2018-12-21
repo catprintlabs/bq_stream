@@ -54,7 +54,7 @@ class ActiveRecord::Base
   end
 
   def create_queued_item(key, value)
-    new_val = (self.class.type_for_attribute(key).type == :datetime ? value.in_time_zone(BqStream.timezone) : value).to_s
+    new_val = (value && self.class.type_for_attribute(key).type == :datetime ? value.in_time_zone(BqStream.timezone) : value).to_s
     BqStream::QueuedItem.create(table_name: self.class.to_s, record_id: id, attr: key, new_value: new_val)
   end
 
