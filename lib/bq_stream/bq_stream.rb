@@ -67,8 +67,8 @@ module BqStream
           rec.update(bq_earliest_update: Time.at(r['f'][2]['v'].to_f))
         end
       end if old_records['rows']
-      OldestRecord.all.each do |or|
-        log(:info, "#{Time.now}: #{or.table_name}, #{or.attr}, #{or.bq_earliest_update}")
+      OldestRecord.all.each do |o|
+        log(:info, "#{Time.now}: #{o.table_name}, #{o.attr}, #{o.bq_earliest_update}")
       end
       log(:info, "#{Time.now}: End Initialize Oldest Records")
 
