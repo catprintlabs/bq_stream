@@ -59,7 +59,7 @@ module BqStream
         # Cycle through gathered OldestRecord rows...
         BqStream.log(:info, "#{Time.now}: oldest_attr_recs count: #{oldest_attr_recs.count}")
         BqStream.log(:info, "#{Time.now}: next_records count: #{next_records.count}")
-        oldest_attr_recs.each do |oldest_attr_rec|
+        oldest_attr_recs.uniq.each do |oldest_attr_rec|
           # ...with each of the next records to be written...
           next_records.each do |next_record|
             # ...place data into buffer based on attr of OldestRecord row
