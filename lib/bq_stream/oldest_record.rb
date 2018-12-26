@@ -10,8 +10,8 @@ module BqStream
       until BqStream::QueuedItem.available_rows.zero? || table_names.empty?
         BqStream.log(:info, "#{Time.now}: Start, while there are available rows, Oldest Record count: #{count}")
         BqStream.log(:info, "#{Time.now}: ***** Start current rows in OldestRecord *****")
-        all.each do |record|
-          BqStream.log(:info, "#{Time.now}: #{record.table_name} #{record.attr} #{record.bq_earliest_update}")
+        all.order(:table_name, :attr).each do |record|
+          BqStream.log(:info, "#{Time.now}: #{record.id} #{record.table_name} #{record.attr} #{record.bq_earliest_update}")
         end
         BqStream.log(:info, "#{Time.now}: ***** End current rows in OldestRecord *****")
         # Cycle through table names and grab latest records for each one

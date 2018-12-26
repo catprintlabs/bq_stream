@@ -50,15 +50,12 @@ module BqStream
 
     def initialize_old_records
       OldestRecord.delete_all
-      log(:info, "#{Time.now}: Start Initialize Oldest Records")
-      log(:info, "#{Time.now}: Oldest Record Count #{OldestRecord.count}")
       OldestRecord.create(table_name: '! revision !', attr: `cat #{File.expand_path ''}/REVISION`)
 
       old_records = @bq_writer.query('SELECT table_name, attr, min(updated_at) '\
                                      'as bq_earliest_update FROM '\
                                      "[#{project_id}:#{dataset}.#{bq_table_name}] "\
                                      'GROUP BY table_name, attr')
-      log(:info, "#{Time.now}: old_records['rows'].count: #{old_records['rows'].count}") if old_records['rows']
       old_records['rows'].each do |r|
         table = r['f'][0]['v']
         trait = r['f'][1]['v']
@@ -67,11 +64,6 @@ module BqStream
           rec.update(bq_earliest_update: Time.at(r['f'][2]['v'].to_f))
         end
       end if old_records['rows']
-      OldestRecord.all.each do |o|
-        log(:info, "#{Time.now}: #{o.table_name}, #{o.attr}, #{o.bq_earliest_update}")
-      end
-      log(:info, "#{Time.now}: End Initialize Oldest Records")
-
     end
 
     def encode_value(value)
