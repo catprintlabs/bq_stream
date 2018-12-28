@@ -72,6 +72,8 @@ module BqStream
     end
 
     def dequeue_items
+      log(:info, "#{Time.now}: !!!!! dequeue_items called from HYPERLOOP !!!!!") if back_date
+      log(:info, "#{Time.now}: !!!!! dequeue_items called from MASTER !!!!!") unless back_date
       log_code = rand(2**256).to_s(36)[0..7]
       log(:info, "#{Time.now}: ***** Dequeue Items Started ***** #{log_code}")
       log(:info, "#{Time.now}: In dequeue_items Oldest Record count: #{OldestRecord.count}")
