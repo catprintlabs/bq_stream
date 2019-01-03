@@ -52,7 +52,8 @@ module BqStream
       # Grab all rows with the same table name
       BqStream.log(:info, "#{Time.now}: Oldest Record count: #{count}")
       BqStream.log(:info, "#{Time.now}: Oldest Record count for #{table}: #{where('table_name = ?', table).count}")
-      oldest_attr_recs = where('table_name = ?', table)
+      oldest_attr_recs = where('table_name = ? AND bq_earliest_update >= ?', table, BqStream.back_date)
+      return if oldest_attr_recs.empty?
       BqStream.log(:info, "#{Time.now}: Initial oldest_attr_recs count: #{oldest_attr_recs.count}")
       # Grab the earliest bq_earliest_update (datetime)
       # for given rows in given table name
@@ -63,12 +64,13 @@ module BqStream
       next_records = records_to_write(table.constantize, earliest_update)
       # Check if we have any records to be queued for BigQuery
       if next_records.nil?
-        BqStream.log(:info, "#{Time.now}: >>>>> Deleting & Returning <<<<<")
+        BqStream.log(:info, "#{Time.now}: >>>>> Returning <<<<<")
         BqStream.log(:info, "#{Time.now}: >>>>> Update Oldest Records "\
                      "For #{table} Ending <<<<<")
         # If there are no next_records, destroy all lines in
         # OldestRecord table with the given table name
-        oldest_attr_recs.delete_all && return
+        return
+        # oldest_attr_recs.delete_all && return
       else
         # Cycle through gathered OldestRecord rows...
         BqStream.log(:info, "#{Time.now}: oldest_attr_recs count: #{oldest_attr_recs.count}")
