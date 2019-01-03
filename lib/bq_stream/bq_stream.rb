@@ -45,25 +45,24 @@ module BqStream
       create_bq_writer
       create_bq_dataset unless @bq_writer.datasets_formatted.include?(dataset)
       create_bq_table unless @bq_writer.tables_formatted.include?(bq_table_name)
-      initialize_old_records if back_date
     end
 
-    def initialize_old_records
-      OldestRecord.delete_all
-      OldestRecord.create(table_name: '! revision !', attr: `cat #{File.expand_path ''}/REVISION`)
-
-      old_records = @bq_writer.query('SELECT table_name, attr, min(updated_at) '\
-                                     'as bq_earliest_update FROM '\
-                                     "[#{project_id}:#{dataset}.#{bq_table_name}] "\
-                                     'GROUP BY table_name, attr')
-      old_records['rows'].each do |r|
-        table = r['f'][0]['v']
-        trait = r['f'][1]['v']
-        unless trait.nil?
-          rec = OldestRecord.find_or_create_by(table_name: table, attr: trait)
-          rec.update(bq_earliest_update: Time.at(r['f'][2]['v'].to_f))
-        end
-      end if old_records['rows']
+    # Destroy or create rows based on the current bq attributes for given table
+    def update_bq_attribute_records(table, current_bq_attributes)
+      if ActiveRecord::Base.connection.table_exists? 'bq_stream_bq_attributes'
+        attributes_on_record = BqAttribute.where(table_name: table).pluck(:attr)
+        attributes_to_remove = attributes_on_record.reject { |i| current_bq_attributes.include? i }
+        attributes_to_add = current_bq_attributes.reject { |i| attributes_on_record.include? i }
+        attributes_to_remove.each { |i| OldestRecord.where(table_name: table, attr: i).delete_all }
+        attributes_to_add.each { |i| OldestRecord.create(table_name: table, attr: i) }
+      end
+      if ActiveRecord::Base.connection.table_exists? 'bq_stream_bq_oldest_records' and back_date
+        oldest_on_record = OldestRecord.where(table_name: table).pluck(:attr)
+        oldest_to_remove = oldest_on_record.reject { |i| current_bq_attributes.include? i }
+        oldest_to_add = current_bq_attributes.reject { |i| oldest_on_record.include? i }
+        oldest_to_remove.each { |i| OldestRecord.where(table_name: table, attr: i).delete_all }
+        oldest_to_add.each { |i| OldestRecord.create(table_name: table, attr: i)}
+      end
     end
 
     def encode_value(value)
