@@ -17,6 +17,7 @@ module BqStream
   class << self
     attr_accessor :logger
     attr_accessor :error_logger
+    attr_accessor :bq_attributes
 
     def log(type, message)
       return unless logger
@@ -47,21 +48,24 @@ module BqStream
       create_bq_table unless @bq_writer.tables_formatted.include?(bq_table_name)
     end
 
+    def register_bq_attributes(table, bq_attribuites)
+      @bq_attributes ||= {}
+      @bq_attributes[table] = bq_attribuites
+    end
+
     # Destroy or create rows based on the current bq attributes for given table
-    def update_bq_attribute_records(table, current_bq_attributes)
-      if ActiveRecord::Base.connection.table_exists? 'bq_stream_bq_attributes'
-        attributes_on_record = BqAttribute.where(table_name: table).pluck(:attr)
-        attributes_to_remove = attributes_on_record.reject { |i| current_bq_attributes.include? i }
-        attributes_to_add = current_bq_attributes.reject { |i| attributes_on_record.include? i }
-        attributes_to_remove.each { |i| OldestRecord.where(table_name: table, attr: i).delete_all }
-        attributes_to_add.each { |i| OldestRecord.create(table_name: table, attr: i) }
-      end
-      if ActiveRecord::Base.connection.table_exists? 'bq_stream_bq_oldest_records' and back_date
-        oldest_on_record = OldestRecord.where(table_name: table).pluck(:attr)
-        oldest_to_remove = oldest_on_record.reject { |i| current_bq_attributes.include? i }
-        oldest_to_add = current_bq_attributes.reject { |i| oldest_on_record.include? i }
-        oldest_to_remove.each { |i| OldestRecord.where(table_name: table, attr: i).delete_all }
-        oldest_to_add.each { |i| OldestRecord.create(table_name: table, attr: i)}
+    def verify_bq_attribute_records
+      if ActiveRecord::Base.connection.table_exists?('bq_stream_oldest_records')
+        @bq_attributes.each do |k, v|
+          # add any records to oldest_records that are new (Or more simply make sure that that there is a record using find_by_or_create)
+          v.each do |bqa|
+            OldestRecord.find_or_create_by(table_name: k, attr: bqa)
+          end
+          # delete any records that are not in bq_attributes
+          OldestRecord.where(table_name: k).each do |rec|
+            rec.destroy unless v.include?(rec.attr.to_sym)
+          end
+        end
       end
     end
 
@@ -71,12 +75,13 @@ module BqStream
     end
 
     def dequeue_items
-      log(:info, "#{Time.now}: !!!!! dequeue_items called from HYPERLOOP !!!!!") if back_date
-      log(:info, "#{Time.now}: !!!!! dequeue_items called from MASTER !!!!!") unless back_date
       log_code = rand(2**256).to_s(36)[0..7]
       log(:info, "#{Time.now}: ***** Dequeue Items Started ***** #{log_code}")
       log(:info, "#{Time.now}: In dequeue_items Oldest Record count: #{OldestRecord.count}")
-      OldestRecord.update_bq_earliest if back_date
+      if back_date && !OldestRecord.where('bq_earliest_update >= ?', BqStream.back_date).empty?
+        verify_bq_attribute_records
+        OldestRecord.update_bq_earliest
+      end
       create_bq_writer
       records = QueuedItem.where(sent_to_bq: nil).limit(batch_size)
       data = records.collect do |i|
