@@ -72,7 +72,7 @@ module BqStream
             rec.destroy unless v.include?(rec.attr.to_sym)
           end
         end
-        log(:info, "#{Time.now}: ***** Updating Odlest Record Revision to #{current_deploy} *****")
+        log(:info, "#{Time.now}: ***** Updating Oldest Record Revision to #{current_deploy} *****")
         update_revision = OldestRecord.find_or_create_by(table_name: '! revision !')
         update_revision.update(attr: current_deploy)
       end
