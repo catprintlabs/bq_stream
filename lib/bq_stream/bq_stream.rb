@@ -57,10 +57,11 @@ module BqStream
     def verify_oldest_records
       log(:info, "#{Time.now}: ***** Verifying Oldest Records *****")
       if ActiveRecord::Base.connection.table_exists?('bq_stream_oldest_records')
+        current_deploy = `cat #{File.expand_path ''}/REVISION`
         revision = OldestRecord.find_by_table_name('! revision !')
         log(:info, "#{Time.now}: ***** Oldest Record Revision: #{revision.attr} *****") if revision
-        log(:info, "#{Time.now}: ***** Current Deploy: #{`cat #{File.expand_path ''}/REVISION`} *****")
-        return if revision && revision.attr == `cat #{File.expand_path ''}/REVISION`
+        log(:info, "#{Time.now}: ***** Current Deploy: #{current_deploy} *****")
+        return if revision && revision.attr == current_deploy
         @bq_attributes.each do |k, v|
           # add any records to oldest_records that are new (Or more simply make sure that that there is a record using find_by_or_create)
           v.each do |bqa|
@@ -71,9 +72,9 @@ module BqStream
             rec.destroy unless v.include?(rec.attr.to_sym)
           end
         end
-        log(:info, "#{Time.now}: ***** Updating Odlest Record Revision to #{`cat #{File.expand_path ''}/REVISION`} *****")
+        log(:info, "#{Time.now}: ***** Updating Odlest Record Revision to #{current_deploy} *****")
         update_revision = OldestRecord.find_or_create_by(table_name: '! revision !')
-        update_revision.update(attr: `cat #{File.expand_path ''}/REVISION`)
+        update_revision.update(attr: current_deploy)
       end
     end
 
