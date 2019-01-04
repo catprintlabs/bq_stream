@@ -60,7 +60,7 @@ module BqStream
         revision = OldestRecord.find_by_table_name('! revision !')
         log(:info, "#{Time.now}: ***** Oldest Record Revision: #{revision} *****") if revision
         log(:info, "#{Time.now}: ***** Current Deploy: #{`cat #{File.expand_path ''}/REVISION`} *****")
-        return revision && revision.attr == `cat #{File.expand_path ''}/REVISION`
+        return if revision && revision.attr == `cat #{File.expand_path ''}/REVISION`
         @bq_attributes.each do |k, v|
           # add any records to oldest_records that are new (Or more simply make sure that that there is a record using find_by_or_create)
           v.each do |bqa|
