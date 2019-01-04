@@ -67,8 +67,7 @@ module BqStream
         BqStream.log(:info, "#{Time.now}: >>>>> Returning <<<<<")
         BqStream.log(:info, "#{Time.now}: >>>>> Update Oldest Records "\
                      "For #{table} Ending <<<<<")
-        # If there are no next_records, destroy all lines in
-        # OldestRecord table with the given table name
+        # Return if there are no next_records
         return
         # oldest_attr_recs.delete_all && return
       else
