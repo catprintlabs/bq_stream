@@ -58,7 +58,7 @@ module BqStream
       log(:info, "#{Time.now}: ***** Verifying Oldest Records *****")
       if ActiveRecord::Base.connection.table_exists?('bq_stream_oldest_records')
         revision = OldestRecord.find_by_table_name('! revision !')
-        log(:info, "#{Time.now}: ***** Oldest Record Revision: #{revision} *****") if revision
+        log(:info, "#{Time.now}: ***** Oldest Record Revision: #{revision.attr} *****") if revision
         log(:info, "#{Time.now}: ***** Current Deploy: #{`cat #{File.expand_path ''}/REVISION`} *****")
         return if revision && revision.attr == `cat #{File.expand_path ''}/REVISION`
         @bq_attributes.each do |k, v|
