@@ -54,8 +54,10 @@ module BqStream
     end
 
     # Destroy or create rows based on the current bq attributes for given table
-    def verify_bq_attribute_records
+    def verify_oldest_records
       if ActiveRecord::Base.connection.table_exists?('bq_stream_oldest_records')
+        revision = OldestRecord.find_by_table_name('! revision !')
+        return revision && revision.attr == `cat #{File.expand_path ''}/REVISION`
         @bq_attributes.each do |k, v|
           # add any records to oldest_records that are new (Or more simply make sure that that there is a record using find_by_or_create)
           v.each do |bqa|
@@ -66,6 +68,8 @@ module BqStream
             rec.destroy unless v.include?(rec.attr.to_sym)
           end
         end
+        update_revision = OldestRecord.find_or_create_by(table_name: '! revision !')
+        update_revision.update(attr: `cat #{File.expand_path ''}/REVISION`)
       end
     end
 
@@ -79,7 +83,7 @@ module BqStream
       log(:info, "#{Time.now}: ***** Dequeue Items Started ***** #{log_code}")
       log(:info, "#{Time.now}: In dequeue_items Oldest Record count: #{OldestRecord.count}")
       if back_date && !OldestRecord.where('bq_earliest_update >= ?', BqStream.back_date).empty?
-        verify_bq_attribute_records
+        verify_oldest_records
         OldestRecord.update_bq_earliest
       end
       create_bq_writer
