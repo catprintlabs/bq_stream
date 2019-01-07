@@ -69,7 +69,7 @@ module BqStream
       @bq_attributes.each do |k, v|
         # add any records to oldest_records that are new (Or more simply make sure that that there is a record using find_by_or_create)
         v.each do |bqa|
-          OldestRecord.find_or_create_by(table_name: k, attr: bqa, archived: false)
+          OldestRecord.find_or_create_by(table_name: k, attr: bqa)
         end
         # delete any records that are not in bq_attributes
         OldestRecord.where(table_name: k).each do |rec|
@@ -77,6 +77,7 @@ module BqStream
         end
       end
       log(:info, "#{Time.now}: ***** Updating Oldest Record Revision to #{current_deploy} *****")
+      OldestRecord.update_all(archived: false)
       update_revision = OldestRecord.find_or_create_by(table_name: '! revision !')
       update_revision.update(attr: current_deploy, archived: true)
     end
