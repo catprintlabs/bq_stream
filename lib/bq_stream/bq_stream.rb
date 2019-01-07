@@ -56,7 +56,12 @@ module BqStream
     # Destroy or create rows based on the current bq attributes for given table
     def verify_oldest_records
       log(:info, "#{Time.now}: ***** Verifying Oldest Records *****")
-      current_deploy = `cat #{File.expand_path ''}/REVISION`
+      current_deploy =
+        if File.exist?(`cat #{File.expand_path ''}/REVISION`)
+          `cat #{File.expand_path ''}/REVISION`
+        else
+          'None'
+        end
       revision = OldestRecord.find_by_table_name('! revision !')
       log(:info, "#{Time.now}: ***** Oldest Record Revision: #{revision.attr} *****") if revision
       log(:info, "#{Time.now}: ***** Current Deploy: #{current_deploy} *****")
@@ -64,7 +69,7 @@ module BqStream
       @bq_attributes.each do |k, v|
         # add any records to oldest_records that are new (Or more simply make sure that that there is a record using find_by_or_create)
         v.each do |bqa|
-          OldestRecord.find_or_create_by(table_name: k, attr: bqa)
+          OldestRecord.find_or_create_by(table_name: k, attr: bqa, archived: false)
         end
         # delete any records that are not in bq_attributes
         OldestRecord.where(table_name: k).each do |rec|
@@ -73,7 +78,7 @@ module BqStream
       end
       log(:info, "#{Time.now}: ***** Updating Oldest Record Revision to #{current_deploy} *****")
       update_revision = OldestRecord.find_or_create_by(table_name: '! revision !')
-      update_revision.update(attr: current_deploy)
+      update_revision.update(attr: current_deploy, archived: true)
     end
 
     def encode_value(value)
