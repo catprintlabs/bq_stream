@@ -23,6 +23,7 @@ describe BqStream do
           t.string   :table_name
           t.string   :attr
           t.datetime :bq_earliest_update
+          t.boolean  :archived
         end
       end
     end
@@ -107,30 +108,30 @@ describe BqStream do
         @initial_args = args
       end
 
-       def insert(*args)
+      def insert(*args)
         args[1].each do |i|
           i[:updated_at] = Time.now
         end
         inserted_records << [args]
       end
 
-       def create_table(*args)
+      def create_table(*args)
         bq_table_columns << [args]
       end
 
-       def create_dataset(*args)
+      def create_dataset(*args)
         bq_datasets << [args]
       end
 
-       def datasets_formatted
+      def datasets_formatted
         []
       end
 
-       def tables_formatted
+      def tables_formatted
         []
       end
 
-       def query(_q)
+      def query(_q)
         { 'kind' => 'bigquery#queryResponse',
           'schema' => { 'fields' =>
             [{ 'name' => 'table_name', 'type' => 'STRING',
@@ -173,13 +174,13 @@ describe BqStream do
       end
     end
 
-     BqStream.class_eval do
+    BqStream.class_eval do
       class << self
         attr_reader :bq_writer
       end
     end
 
-     BqStream.configuration do |config|
+    BqStream.configuration do |config|
       config.client_id = 'client_id'
       config.service_email = 'service_email'
       config.key = 'key'
@@ -191,11 +192,11 @@ describe BqStream do
     @time_stamp = Time.now.in_time_zone(BqStream.timezone)
   end
 
-   it 'has a version number' do
+  it 'has a version number' do
     expect(BqStream::VERSION).not_to be nil
   end
 
-   context 'during configuration' do    
+  context 'during configuration' do
     it 'can be configured' do
       expect(BqStream.client_id).to eq('client_id')
       expect(BqStream.service_email).to eq('service_email')
@@ -283,7 +284,6 @@ describe BqStream do
     end
 
     it 'should write queued item to table when bq_attributes is called' do
-      binding.pry
       expect(BqStream::QueuedItem.all.as_json)
         .to eq([{
                  'id' => 1,
@@ -409,143 +409,147 @@ describe BqStream do
                ])
       expect(BqStream.bq_writer.inserted_records)
         .to eq([[['bq_datastream',
-          [{ table_name: 'TableThird',
-            record_id: @old_record.id,
-            attr: 'notes',
-            new_value: 'an old record',
-            updated_at: Time.parse('2016-12-31 19:00:00') },
-          { table_name: 'TableThird',
-            record_id: @old_record.id,
-            attr: 'updated_at',
-            new_value: '2016-09-21 04:00:00 UTC',
-            updated_at: Time.parse('2016-12-31 19:00:00') },
-          { table_name: 'TableThird',
-            record_id: @old_record.id,
-            attr: 'name',
-            new_value: 'old record',
-            updated_at: Time.parse('2016-12-31 19:00:00') },
-          { table_name: 'TableFirst',
-            record_id: @first_record.id,
-            attr: 'id',
-            new_value: @first_record.id.to_s,
-            updated_at: Time.parse('2016-12-31 19:00:00') },
-          { table_name: 'TableFirst',
-            record_id: @first_record.id,
-            attr: 'name',
-            new_value: 'primary record',
-            updated_at: Time.parse('2016-12-31 19:00:00') },
-          { table_name: 'TableFirst',
-            record_id: @first_record.id,
-            attr: 'description',
-            new_value: 'first into the table',
-            updated_at: Time.parse('2016-12-31 19:00:00') },
-          { table_name: 'TableFirst',
-            record_id: @first_record.id,
-            attr: 'required',
-            new_value: 'true',
-            updated_at: Time.parse('2016-12-31 19:00:00') },
-          { table_name: 'TableFirst',
-            record_id: @first_record.id,
-            attr: 'created_at',
-            new_value: @time_stamp.to_s,
-            updated_at: Time.parse('2016-12-31 19:00:00') },
-          { table_name: 'TableFirst',
-            record_id: @first_record.id,
-            attr: 'updated_at',
-            new_value: @time_stamp.to_s,
-            updated_at: Time.parse('2016-12-31 19:00:00') },
-          { table_name: 'TableSecond',
-            record_id: @second_record.id,
-            attr: 'name',
-            new_value: 'secondary record',
-            updated_at: Time.parse('2016-12-31 19:00:00') },
-          { table_name: 'TableSecond',
-            record_id: @second_record.id,
-            attr: 'status',
-            new_value: 'active',
-            updated_at: Time.parse('2016-12-31 19:00:00') },
-          { table_name: 'TableThird',
-            record_id: @third_record.id,
-            attr: 'name',
-            new_value: 'third record',
-            updated_at: Time.parse('2016-12-31 19:00:00') },
-          { table_name: 'TableThird',
-            record_id: @third_record.id,
-            attr: 'notes',
-            new_value: '12.50',
-            updated_at: Time.parse('2016-12-31 19:00:00') },
-          { table_name: 'TableThird',
-            record_id: @third_record.id,
-            attr: 'updated_at',
-            new_value: @time_stamp.to_s,
-            updated_at: Time.parse('2016-12-31 19:00:00') },
-          { table_name: 'TableSecond',
-            record_id: @second_record.id,
-            attr: 'Destroyed',
-            new_value: 'True',
-            updated_at: Time.parse('2016-12-31 19:00:00') }]]]])
+                  [{ table_name: 'TableFirst',
+                     record_id: @first_record.id,
+                     attr: 'id',
+                     new_value: @first_record.id.to_s,
+                     updated_at: Time.parse('2016-12-31 19:00:00') },
+                   { table_name: 'TableFirst',
+                     record_id: @first_record.id,
+                     attr: 'name',
+                     new_value: 'primary record',
+                     updated_at: Time.parse('2016-12-31 19:00:00') },
+                   { table_name: 'TableFirst',
+                     record_id: @first_record.id,
+                     attr: 'description',
+                     new_value: 'first into the table',
+                     updated_at: Time.parse('2016-12-31 19:00:00') },
+                   { table_name: 'TableFirst',
+                     record_id: @first_record.id,
+                     attr: 'required',
+                     new_value: 'true',
+                     updated_at: Time.parse('2016-12-31 19:00:00') },
+                   { table_name: 'TableFirst',
+                     record_id: @first_record.id,
+                     attr: 'created_at',
+                     new_value: @time_stamp.to_s,
+                     updated_at: Time.parse('2016-12-31 19:00:00') },
+                   { table_name: 'TableFirst',
+                     record_id: @first_record.id,
+                     attr: 'updated_at',
+                     new_value: @time_stamp.to_s,
+                     updated_at: Time.parse('2016-12-31 19:00:00') },
+                   { table_name: 'TableSecond',
+                     record_id: @second_record.id,
+                     attr: 'name',
+                     new_value: 'secondary record',
+                     updated_at: Time.parse('2016-12-31 19:00:00') },
+                   { table_name: 'TableSecond',
+                     record_id: @second_record.id,
+                     attr: 'status',
+                     new_value: 'active',
+                     updated_at: Time.parse('2016-12-31 19:00:00') },
+                   { table_name: 'TableThird',
+                     record_id: @third_record.id,
+                     attr: 'name',
+                     new_value: 'third record',
+                     updated_at: Time.parse('2016-12-31 19:00:00') },
+                   { table_name: 'TableThird',
+                     record_id: @third_record.id,
+                     attr: 'notes',
+                     new_value: '12.50',
+                     updated_at: Time.parse('2016-12-31 19:00:00') },
+                   { table_name: 'TableThird',
+                     record_id: @third_record.id,
+                     attr: 'updated_at',
+                     new_value: '2017-01-01 00:00:00 UTC',
+                     updated_at: Time.parse('2016-12-31 19:00:00') },
+                   { table_name: 'TableSecond',
+                     record_id: @second_record.id,
+                     attr: 'Destroyed',
+                     new_value: 'True',
+                     updated_at: Time.parse('2016-12-31 19:00:00') }]]]])
     end
 
     context 'oldest record table' do
-      it 'should write bigquery items to oldest record table' do
+      it 'should be empty until firt dequeue' do
         expect(BqStream::OldestRecord.all.as_json)
-          .to eq([{ 'id' => 1,
-                    'table_name' => '! revision !',
-                    'attr' => '',
-                    'bq_earliest_update' => nil },
-                  { 'id' => 2,
-                    'table_name' => 'TableThird',
-                    'attr' => 'notes',
-                    'bq_earliest_update' => Time.parse('2016-12-31 19:00:00') },
-                  { 'id' => 3,
-                    'table_name' => 'TableFirst',
-                    'attr' => 'name',
-                    'bq_earliest_update' => Time.parse('2016-12-31 19:00:00') },
-                  { 'id' => 4,
-                    'table_name' => 'TableFirst',
-                    'attr' => 'created_at',
-                    'bq_earliest_update' => Time.parse('2016-12-31 19:00:00') },
-                  { 'id' => 5,
-                    'table_name' => 'TableSecond',
-                    'attr' => 'name',
-                    'bq_earliest_update' => Time.parse('2016-12-31 19:00:00') },
-                  { 'id' => 6,
-                    'table_name' => 'TableFirst',
-                    'attr' => 'description',
-                    'bq_earliest_update' => Time.parse('2016-12-31 19:00:00') },
-                  { 'id' => 7,
-                    'table_name' => 'TableThird',
-                    'attr' => 'updated_at',
-                    'bq_earliest_update' => Time.parse('2016-12-31 19:00:00') },
-                  { 'id' => 8,
-                    'table_name' => 'TableThird',
-                    'attr' => 'name',
-                    'bq_earliest_update' => Time.parse('2016-12-31 19:00:00') },
-                  { 'id' => 9,
-                    'table_name' => 'TableFirst',
-                    'attr' => 'id',
-                    'bq_earliest_update' => Time.parse('2016-12-31 19:00:00') },
-                  { 'id' => 10,
-                    'table_name' => 'TableFirst',
-                    'attr' => 'required',
-                    'bq_earliest_update' => Time.parse('2016-12-31 19:00:00') },
-                  { 'id' => 11,
-                    'table_name' => 'TableSecond',
-                    'attr' => 'status',
-                    'bq_earliest_update' => Time.parse('2016-12-31 19:00:00') },
-                  { 'id' => 12,
-                    'table_name' => 'TableFirst',
-                    'attr' => 'updated_at',
-                    'bq_earliest_update' => Time.parse('2016-12-31 19:00:00') }])
+          .to eq([])
       end
 
       it 'should update oldest records' do
         BqStream.dequeue_items
         expect(BqStream::OldestRecord.all.as_json)
           .to eq([{ 'id' => 1,
+                    'table_name' => 'TableFirst',
+                    'attr' => 'id',
+                    'bq_earliest_update' => nil,
+                    'archived' => true },
+                  { 'id' => 2,
+                    'table_name' => 'TableFirst',
+                    'attr' => 'name',
+                    'bq_earliest_update' => nil,
+                    'archived' => true
+                  },
+                  { 'id' => 3,
+                    'table_name' => 'TableFirst',
+                    'attr' => 'description',
+                    'bq_earliest_update' => nil,
+                    'archived' => true
+                  },
+                  { 'id' => 4,
+                    'table_name' => 'TableFirst',
+                    'attr' => 'required',
+                    'bq_earliest_update' => nil,
+                    'archived' => true
+                  },
+                  { 'id' => 5,
+                    'table_name' => 'TableFirst',
+                    'attr' => 'created_at',
+                    'bq_earliest_update' => nil,
+                    'archived' => true
+                  },
+                  { 'id' => 6,
+                    'table_name' => 'TableFirst',
+                    'attr' => 'updated_at',
+                    'bq_earliest_update' => nil,
+                    'archived' => true
+                  },
+                  { 'id' => 7,
+                    'table_name' => 'TableSecond',
+                    'attr' => 'name',
+                    'bq_earliest_update' => nil,
+                    'archived' => true
+                  },
+                  { 'id' => 8,
+                    'table_name' => 'TableSecond',
+                    'attr' => 'status',
+                    'bq_earliest_update' => nil,
+                    'archived' => true
+                  },
+                  { 'id' => 9,
+                    'table_name' => 'TableThird',
+                    'attr' => 'name',
+                    'bq_earliest_update' => Time.parse('2016-09-21 00:00:00'),
+                    'archived' => true
+                  },
+                  { 'id' => 10,
+                    'table_name' => 'TableThird',
+                    'attr' => 'notes',
+                    'bq_earliest_update' => Time.parse('2016-09-21 00:00:00'),
+                    'archived' => true
+                  },
+                  { 'id' => 11,
+                    'table_name' => 'TableThird',
+                    'attr' => 'updated_at',
+                    'bq_earliest_update' => Time.parse('2016-09-21 00:00:00'),
+                    'archived' => true
+                  },
+                  { 'id' => 12,
                     'table_name' => '! revision !',
-                    'attr' => '',
-                    'bq_earliest_update' => nil }])
+                    'attr' => 'None',
+                    'bq_earliest_update' => nil,
+                    'archived' => true }])
       end
     end
   end
