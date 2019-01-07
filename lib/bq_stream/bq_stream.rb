@@ -56,26 +56,24 @@ module BqStream
     # Destroy or create rows based on the current bq attributes for given table
     def verify_oldest_records
       log(:info, "#{Time.now}: ***** Verifying Oldest Records *****")
-      if ActiveRecord::Base.connection.table_exists?('bq_stream_oldest_records')
-        current_deploy = `cat #{File.expand_path ''}/REVISION`
-        revision = OldestRecord.find_by_table_name('! revision !')
-        log(:info, "#{Time.now}: ***** Oldest Record Revision: #{revision.attr} *****") if revision
-        log(:info, "#{Time.now}: ***** Current Deploy: #{current_deploy} *****")
-        return if revision && revision.attr == current_deploy
-        @bq_attributes.each do |k, v|
-          # add any records to oldest_records that are new (Or more simply make sure that that there is a record using find_by_or_create)
-          v.each do |bqa|
-            OldestRecord.find_or_create_by(table_name: k, attr: bqa)
-          end
-          # delete any records that are not in bq_attributes
-          OldestRecord.where(table_name: k).each do |rec|
-            rec.destroy unless v.include?(rec.attr.to_sym)
-          end
+      current_deploy = `cat #{File.expand_path ''}/REVISION`
+      revision = OldestRecord.find_by_table_name('! revision !')
+      log(:info, "#{Time.now}: ***** Oldest Record Revision: #{revision.attr} *****") if revision
+      log(:info, "#{Time.now}: ***** Current Deploy: #{current_deploy} *****")
+      return if revision && revision.attr == current_deploy
+      @bq_attributes.each do |k, v|
+        # add any records to oldest_records that are new (Or more simply make sure that that there is a record using find_by_or_create)
+        v.each do |bqa|
+          OldestRecord.find_or_create_by(table_name: k, attr: bqa)
         end
-        log(:info, "#{Time.now}: ***** Updating Oldest Record Revision to #{current_deploy} *****")
-        update_revision = OldestRecord.find_or_create_by(table_name: '! revision !')
-        update_revision.update(attr: current_deploy)
+        # delete any records that are not in bq_attributes
+        OldestRecord.where(table_name: k).each do |rec|
+          rec.destroy unless v.include?(rec.attr.to_sym)
+        end
       end
+      log(:info, "#{Time.now}: ***** Updating Oldest Record Revision to #{current_deploy} *****")
+      update_revision = OldestRecord.find_or_create_by(table_name: '! revision !')
+      update_revision.update(attr: current_deploy)
     end
 
     def encode_value(value)
@@ -87,7 +85,7 @@ module BqStream
       log_code = rand(2**256).to_s(36)[0..7]
       log(:info, "#{Time.now}: ***** Dequeue Items Started ***** #{log_code}")
       log(:info, "#{Time.now}: In dequeue_items Oldest Record count: #{OldestRecord.count}")
-      if back_date && !OldestRecord.where('bq_earliest_update >= ?', BqStream.back_date).empty?
+      if back_date && (OldestRecord.all.empty? || !OldestRecord.where('bq_earliest_update >= ?', BqStream.back_date).empty?)
         verify_oldest_records
         OldestRecord.update_bq_earliest
       end
