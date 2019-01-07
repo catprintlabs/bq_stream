@@ -206,15 +206,15 @@ describe BqStream do
       expect(BqStream.back_date).to eq('2016-09-21 00:00:00.000000000 +0000')
       expect(BqStream.timezone).to eq('UTC')
       expect(BqStream::QueuedItem.all).to be_empty
-      expect(BqStream::OldestRecord.all).not_to be_empty
+      expect(BqStream::OldestRecord.all).to be_empty
     end
 
-     it 'should create the bigquery dataset' do
+    it 'should create the bigquery dataset' do
       expect(BqStream.bq_writer.bq_datasets)
         .to eq([[['dataset']]])
     end
 
-     it 'should return an existing bq table and not create a new table' do
+    it 'should return an existing bq table and not create a new table' do
       bq_writer = double(:bq_writer)
       allow(bq_writer).to receive(:tables_formatted) { ['bq_datastream'] }
       BqStream.create_bq_table unless bq_writer
@@ -229,7 +229,7 @@ describe BqStream do
                     updated_at: { type: 'TIMESTAMP', mode: 'REQUIRED' } }]]])
     end
 
-     it 'should create the big query table' do
+    it 'should create the big query table' do
       expect(BqStream.bq_writer.bq_table_columns)
         .to eq([[['bq_datastream',
                   { table_name: { type: 'STRING', mode: 'REQUIRED' },
@@ -240,7 +240,7 @@ describe BqStream do
     end
   end
 
-   context 'should be able to queue and dequeue items from tables' do
+  context 'should be able to queue and dequeue items from tables' do
     before(:all) do
       class TableFirst < ActiveRecord::Base
         bq_attributes :all
@@ -255,7 +255,7 @@ describe BqStream do
       end
     end
 
-     before(:each) do
+    before(:each) do
       @first_record =
         TableFirst.create(name: 'primary record',
                           description: 'first into the table',
@@ -269,20 +269,21 @@ describe BqStream do
                           notes: '12.50',
                           order: 22)
       TableFourth.create(name: 'fourth record',
-                        listing: 'important',
-                        level: 61)
+                         listing: 'important',
+                         level: 61)
       @first_record.update(required: false)
       @second_record.destroy
     end
 
-     after(:each) do
+    after(:each) do
       QueuedItem.destroy_all
       OldestRecord.destroy_all
       ActiveRecord::Base.connection.execute("DELETE from sqlite_sequence where name = 'queued_items'") 
       ActiveRecord::Base.connection.execute("DELETE from sqlite_sequence where name = 'oldest_records'") 
     end
 
-     it 'should write queued item to table when bq_attributes is called' do
+    it 'should write queued item to table when bq_attributes is called' do
+      binding.pry
       expect(BqStream::QueuedItem.all.as_json)
         .to eq([{
                  'id' => 1,
@@ -394,7 +395,7 @@ describe BqStream do
                 }])
     end
 
-     it 'should send queued items to bigquery' do
+    it 'should send queued items to bigquery' do
       BqStream.dequeue_items
       expect(BqStream.bq_writer.initial_args)
         .to eq([
@@ -485,7 +486,7 @@ describe BqStream do
             updated_at: Time.parse('2016-12-31 19:00:00') }]]]])
     end
 
-     context 'oldest record table' do
+    context 'oldest record table' do
       it 'should write bigquery items to oldest record table' do
         expect(BqStream::OldestRecord.all.as_json)
           .to eq([{ 'id' => 1,
@@ -538,7 +539,7 @@ describe BqStream do
                     'bq_earliest_update' => Time.parse('2016-12-31 19:00:00') }])
       end
 
-       it 'should update oldest records' do
+      it 'should update oldest records' do
         BqStream.dequeue_items
         expect(BqStream::OldestRecord.all.as_json)
           .to eq([{ 'id' => 1,
