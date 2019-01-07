@@ -3,20 +3,16 @@ class ActiveRecord::Base
     @transaction_changed_attributes ||= HashWithIndifferentAccess.new
   end
 
-  class << self
-    attr_accessor :bq_atr_of_interest
-  end
-
   def self.bq_attributes(opts = {})
     unless RUBY_ENGINE == 'opal' || !BqStream.dataset
       if opts == :all
-        @bq_atr_of_interest = column_names.map(&:to_sym)
+        bq_atr_of_interest = column_names.map(&:to_sym)
       elsif opts[:only]
         raise 'opts must be an array' unless opts[:only].is_a? Array
-        @bq_atr_of_interest = opts[:only].map(&:to_sym)
+        bq_atr_of_interest = opts[:only].map(&:to_sym)
       elsif opts[:except]
         raise 'opts must be an array.' unless opts[:except].is_a? Array
-        @bq_atr_of_interest = column_names.map(&:to_sym).select do |column|
+        bq_atr_of_interest = column_names.map(&:to_sym).select do |column|
           !opts[:except].include?(column)
         end
       else
@@ -24,7 +20,7 @@ class ActiveRecord::Base
           'or :except) and a value as an array, if using :only or :except.'
       end
 
-      BqStream.register_bq_attributes(name, @bq_atr_of_interest)
+      BqStream.register_bq_attributes(name, bq_atr_of_interest)
 
       after_save do
         changes.each do |k, v|
@@ -33,12 +29,12 @@ class ActiveRecord::Base
       end
 
       after_commit on: [:create] do
-        queue_create(@bq_atr_of_interest)
+        queue_create(bq_atr_of_interest)
         @transaction_changed_attributes = nil
       end
 
       after_commit on: [:update] do
-        queue_update(@bq_atr_of_interest)
+        queue_update(bq_atr_of_interest)
         @transaction_changed_attributes = nil
       end
 
