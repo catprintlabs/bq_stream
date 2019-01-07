@@ -7,7 +7,7 @@ module BqStream
       # Clear the buffer, just in case it is not empty
       BqStream::QueuedItem.buffer.clear
       # Check to see if room availble in batch and if rows exist
-      until BqStream::QueuedItem.available_rows.zero? || table_names.empty?
+      until BqStream::QueuedItem.available_rows.zero? || where(archived: false).empty?
         BqStream.log(:info, "#{Time.now}: Start, while there are available rows, Oldest Record count: #{count}")
         BqStream.log(:info, "#{Time.now}: ***** Start current rows in OldestRecord *****")
         all.order(:table_name, :attr).each do |record|
@@ -17,7 +17,7 @@ module BqStream
         # Cycle through table names and grab latest records for each one
         table_names.each do |table|
           BqStream.log(:info, "#{Time.now}: Oldest Record count before update_oldest_records_for #{table}: #{where('table_name = ?', table).count}")
-          update_oldest_records_for(table)
+          update_oldest_records_for(table) unless where(table_name: table, archived: false).empty?
         end
         BqStream.log(:info, "#{Time.now}: End, while there are available rows, Oldest Record count: #{count}")
       end
@@ -53,7 +53,6 @@ module BqStream
       BqStream.log(:info, "#{Time.now}: Oldest Record count: #{count}")
       BqStream.log(:info, "#{Time.now}: Oldest Record count for #{table}: #{where('table_name = ?', table).count}")
       oldest_attr_recs = where('table_name = ? AND bq_earliest_update >= ?', table, BqStream.back_date)
-      return if oldest_attr_recs.empty?
       BqStream.log(:info, "#{Time.now}: Initial oldest_attr_recs count: #{oldest_attr_recs.count}")
       # Grab the earliest bq_earliest_update (datetime)
       # for given rows in given table name
@@ -67,6 +66,7 @@ module BqStream
         BqStream.log(:info, "#{Time.now}: >>>>> Returning <<<<<")
         BqStream.log(:info, "#{Time.now}: >>>>> Update Oldest Records "\
                      "For #{table} Ending <<<<<")
+        where(table_name: table).each { |row| row.update(archived: true) }
         # Return if there are no next_records
         return
         # oldest_attr_recs.delete_all && return
@@ -81,8 +81,13 @@ module BqStream
             oldest_attr_rec.buffer_attribute(next_record)
           end
         end
-        # Make all gathered OldestRecord rows to lastest created_at
-        oldest_attr_recs.update_all(bq_earliest_update: next_records.first.created_at)
+        # Make all OldestRecord rows for table to lastest created_at
+        # it is possible to have no oldest_attr_recs but have next_records, because bq_earliest_update are all nil
+        if oldest_attr_recs.empty?
+          where(table_name: table).update_all(bq_earliest_update: next_records.first.created_at)
+        else
+          oldest_attr_recs.update_all(bq_earliest_update: next_records.first.created_at)
+        end
         BqStream.log(:info, "#{Time.now}: after update oldest_attr_recs count: #{oldest_attr_recs.count}")
         BqStream.log(:info, "#{Time.now}: Buffer: #{BqStream::QueuedItem.buffer.count} / #{BqStream::QueuedItem.available_rows}")
         BqStream.log(:info, "#{Time.now}: >>>>> Update Oldest Records "\
@@ -97,7 +102,8 @@ module BqStream
       # the earliest update. This is done instead of grabbing the record itself,
       # in case more than one was created at the same time
       next_created_at = table.where(
-        'created_at >= ? AND created_at < ?',
+        # created_at >= can cause an infinite loop if latest record is equal to back_date
+        'created_at > ? AND created_at < ?',
         BqStream.back_date, earliest_update || Time.now
       ).order('created_at DESC').first.try(:created_at)
 
