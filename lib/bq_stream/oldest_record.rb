@@ -1,5 +1,6 @@
 module BqStream
   class OldestRecord < ActiveRecord::Base
+    self.table_name = 'bq_stream_oldest_records'
     # Runs through latest records for each table name in Oldestrecord
     # filling buffer until reaching batch size; then writes to QueuedItem
     def self.update_bq_earliest

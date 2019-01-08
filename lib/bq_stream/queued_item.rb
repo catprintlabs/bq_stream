@@ -1,5 +1,7 @@
 module BqStream
   class QueuedItem < ActiveRecord::Base
+    self.table_name = 'bq_stream_queued_items'
+
     default_scope { order(updated_at: :asc) }
 
     # Temporary array of records to be added into QueuedItem table
