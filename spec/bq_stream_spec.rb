@@ -5,7 +5,7 @@ describe BqStream do
   before(:all) do
     class QueuedItem < ActiveRecord::Base
       def self.build_table
-        connection.create_table :queued_items, force: true do |t|
+        connection.create_table :bq_stream_queued_items, force: true do |t|
           t.string    :table_name
           t.integer   :record_id
           t.string    :attr
@@ -19,7 +19,7 @@ describe BqStream do
 
     class OldestRecord < ActiveRecord::Base
       def self.build_table
-        connection.create_table :oldest_records, force: true do |t|
+        connection.create_table :bq_stream_oldest_records, force: true do |t|
           t.string   :table_name
           t.string   :attr
           t.datetime :bq_earliest_update
@@ -277,10 +277,10 @@ describe BqStream do
     end
 
     after(:each) do
-      QueuedItem.destroy_all
-      OldestRecord.destroy_all
-      ActiveRecord::Base.connection.execute("DELETE from sqlite_sequence where name = 'queued_items'") 
-      ActiveRecord::Base.connection.execute("DELETE from sqlite_sequence where name = 'oldest_records'") 
+      BqStream::QueuedItem.destroy_all
+      BqStream::OldestRecord.destroy_all
+      ActiveRecord::Base.connection.execute("DELETE from sqlite_sequence where name = 'bq_stream_queued_items'") 
+      ActiveRecord::Base.connection.execute("DELETE from sqlite_sequence where name = 'bq_stream_oldest_records'") 
     end
 
     it 'should write queued item to table when bq_attributes is called' do
