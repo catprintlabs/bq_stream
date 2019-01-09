@@ -19,12 +19,8 @@ class ActiveRecord::Base
         raise 'You must declare an opts hash with a key of :all, :only '\
           'or :except) and a value as an array, if using :only or :except.'
       end
-      if BqStream.back_date
-        bq_atr_of_interest.each do |attribute|
-          record = BqStream::OldestRecord.find_by(table_name: name, attr: attribute)
-          BqStream::OldestRecord.create(table_name: name, attr: attribute) unless record
-        end
-      end
+
+      BqStream.register_bq_attributes(name, bq_atr_of_interest)
 
       after_save do
         changes.each do |k, v|
