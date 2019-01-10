@@ -96,7 +96,8 @@ module BqStream
         OldestRecord.update_bq_earliest
       end
       create_bq_writer
-      records = QueuedItem.where(sent_to_bq: nil).limit(batch_size)
+      # Batch sending to BigQuery is limited to 10_000 rows
+      records = QueuedItem.where(sent_to_bq: nil).limit([batch_size, 10_000].min)
       data = records.collect do |i|
         new_val = encode_value(i.new_value) rescue nil
         { table_name: i.table_name, record_id: i.record_id, attr: i.attr,
