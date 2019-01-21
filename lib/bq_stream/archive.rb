@@ -100,6 +100,8 @@ def oldest_record_archive(back_date)
   BqStream.log(:info, "#{Time.now}: ***** End Process *****")
 end
 
+# backdate = DateTime.now.beginning_of_year - 2.years
+
 def streamline_archive(back_date)
   BqStream.log(:info, "#{Time.now}: ***** Start Streamline Process *****")
 
@@ -108,8 +110,7 @@ def streamline_archive(back_date)
 
   BqStream.log(:info, "#{Time.now}: ***** Start Update Oldest Record Rows *****")
   # If there is a crash and records didn't get pushed to BigQuery because we lost those in buffer
-  old_records = @bq_archiver.query('SELECT table_name, attr, min(updated_at) '\
-                                   'as bq_earliest_update FROM '\
+  old_records = @bq_archiver.query('SELECT table_name, attr, min(updated_at) as bq_earliest_update FROM '\
                                    "[#{BqStream.project_id}:#{BqStream.dataset}.#{BqStream.bq_table_name}] "\
                                    'GROUP BY table_name, attr')
   old_records['rows'].each do |r|
@@ -123,66 +124,54 @@ def streamline_archive(back_date)
 
   BqStream::OldestRecord.where.not(table_name: '! revision !').update_all(archived: false)
   BqStream.log(:info, "#{Time.now}: ***** End Update Oldest Record Rows *****")
+
   iteration = 0
   until BqStream::OldestRecord.where(archived: false).empty? && buffer.empty?
-    BqStream.log(:info, "#{Time.now}: ***** New Cycle: Buffer Count: #{buffer.count} #{iteration}*****")
-    if buffer.count.positive?
-      if BqStream::OldestRecord.where(archived: false).empty?
-        records = buffer
-      elsif buffer.count >= 10_000
-        BqStream.log(:info, "#{Time.now}: ***** Grab 10,000 Records from the #{buffer.count} in bufffer *****")
-        records = buffer.first(10_000)
-        BqStream.log(:info, "#{Time.now}: ***** Grab Complete *****")
-      else
-        records = nil
-      end
-      if records
-        BqStream.log(:info, "#{Time.now}: ***** Start data pack and insert *****")
-        data = records.collect do |i|
-          new_val = encode_value(i[:new_value]) rescue nil
-          { table_name: i[:table_name], record_id: i[:record_id], attr: i[:attr],
-            new_value: new_val ? new_val : i[:new_value], updated_at: i[:updated_at] }
-        end
-        BqStream.log(:info, "#{Time.now}: ***** Insert #{records.count} Records to BigQuery *****")
-        @bq_archiver.insert(BqStream.bq_table_name, data) unless data.empty?
-        buffer = []
-        BqStream.log(:info, "#{Time.now}: ***** End data pack and insert *****")
-      end
-    end
     BqStream::OldestRecord.table_names.each do |table|
       unless BqStream::OldestRecord.where(table_name: table, archived: false).empty?
         BqStream.log(:info, "#{Time.now}: ***** Cycle Table: #{table} *****")
         oldest_attr_recs = BqStream::OldestRecord.where('table_name = ? AND bq_earliest_update >= ?', table, back_date)
         earliest_update = oldest_attr_recs.map(&:bq_earliest_update).compact.min
 
-        next_created_at = table.constantize.where(
+        next_batch = table.constantize.where(
           'created_at > ? AND created_at < ?', 
           back_date, earliest_update || Time.now
-        ).order('created_at DESC').first.try(:created_at)
+        ).order('created_at DESC').limit(10_000 / (oldest_attr_recs.count.zero? ? 1 : oldest_attr_recs.count))
 
-        next_records = table.constantize.where('created_at = ?', next_created_at) if next_created_at
-
-        if next_records.nil?
-          BqStream.log(:info, "#{Time.now}: ***** Cycle Count for #{table}: 0 *****")
+        if next_batch.nil?
           BqStream::OldestRecord.where(table_name: table).each { |row| row.update(archived: true) }
           next
         else
-          BqStream.log(:info, "#{Time.now}: ***** Cycle Count for #{table}: #{next_records.count} *****")
+          earliest_in_batch = next_batch.map(&:created_at).compact.min
+          next_batch.each { |i| next_batch -= [i] if i.created_at == earliest_in_batch }
+          earliest_in_batch = next_batch.map(&:created_at).compact.min
           oldest_attr_recs.uniq.each do |oldest_attr_rec|
-            next_records.each do |next_record|
-              new_val = next_record[oldest_attr_rec.attr] && table.constantize.type_for_attribute(oldest_attr_rec.attr).type == :datetime ? next_record[oldest_attr_rec.attr].in_time_zone(BqStream.timezone) : next_record[oldest_attr_rec.attr].to_s
+            next_batch.each do |record|
+              new_val = record[oldest_attr_rec.attr] && table.constantize.type_for_attribute(oldest_attr_rec.attr).type == :datetime ? record[oldest_attr_rec.attr].in_time_zone(BqStream.timezone) : record[oldest_attr_rec.attr].to_s
               buffer << { table_name: table,
-                          record_id: next_record.id,
+                          record_id: record.id,
                           attr: oldest_attr_rec.attr,
                           new_value: new_val,
-                          updated_at: next_record.created_at }
+                          updated_at: record.created_at }
             end
           end
           if oldest_attr_recs.empty?
-            BqStream::OldestRecord.where(table_name: table).update_all(bq_earliest_update: next_records.first.created_at)
+            BqStream::OldestRecord.where(table_name: table).update_all(bq_earliest_update: earliest_in_batch)
           else
-            oldest_attr_recs.update_all(bq_earliest_update: next_records.first.created_at)
+            oldest_attr_recs.update_all(bq_earliest_update: earliest_in_batch)
           end
+        end
+        unless buffer.empty?
+          BqStream.log(:info, "#{Time.now}: ***** Start data pack and insert *****")
+          data = buffer.collect do |i|
+            new_val = encode_value(i[:new_value]) rescue nil
+            { table_name: i[:table_name], record_id: i[:record_id], attr: i[:attr],
+              new_value: new_val ? new_val : i[:new_value], updated_at: i[:updated_at] }
+          end
+          BqStream.log(:info, "#{Time.now}: ***** Insert #{buffer.count} Records to BigQuery *****")
+          @bq_archiver.insert(BqStream.bq_table_name, data) unless data.empty?
+          buffer = []
+          BqStream.log(:info, "#{Time.now}: ***** End data pack and insert *****")
         end
       end
     end
