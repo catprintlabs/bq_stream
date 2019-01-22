@@ -134,17 +134,21 @@ def streamline_archive(back_date)
         earliest_update = oldest_attr_recs.map(&:bq_earliest_update).compact.min
 
         next_batch = table.constantize.where(
-          'created_at > ? AND created_at < ?', 
+          'created_at > ? AND created_at < ?',
           back_date, earliest_update || Time.now
         ).order('created_at DESC').limit(10_000 / (oldest_attr_recs.count.zero? ? 1 : oldest_attr_recs.count))
 
-        if next_batch.nil?
+        if next_batch.empty?
           BqStream::OldestRecord.where(table_name: table).each { |row| row.update(archived: true) }
           next
         else
           earliest_in_batch = next_batch.map(&:created_at).compact.min
-          next_batch.each { |i| next_batch -= [i] if i.created_at == earliest_in_batch }
-          earliest_in_batch = next_batch.map(&:created_at).compact.min
+          BqStream.log(:info, "#{Time.now}: ***** Earliest Date in Batch: #{earliest_in_batch} *****")
+          if (next_batch.count * oldest_attr_recs.count) > 6_000
+            next_batch.each { |i| next_batch -= [i] if i.created_at == earliest_in_batch }
+            earliest_in_batch = next_batch.map(&:created_at).compact.min
+            BqStream.log(:info, "#{Time.now}: ***** Earliest Date in Batch Updated to: #{earliest_in_batch} *****")
+          end
           oldest_attr_recs.uniq.each do |oldest_attr_rec|
             next_batch.each do |record|
               new_val = record[oldest_attr_rec.attr] && table.constantize.type_for_attribute(oldest_attr_rec.attr).type == :datetime ? record[oldest_attr_rec.attr].in_time_zone(BqStream.timezone) : record[oldest_attr_rec.attr].to_s
