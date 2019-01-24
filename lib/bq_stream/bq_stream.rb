@@ -112,7 +112,7 @@ module BqStream
     def insert_missing_records(records, bq_attributes)
       bq_attributes.each do |bqa|
         records.each do |record|
-          new_val = (record.class.columns_hash[bqa.to_s].type == :datetime ? record.send(bqa).in_time_zone(BqStream.timezone) : record.send(bqa)).to_s
+          new_val = (!record.send(bqa).nil? && record.class.columns_hash[bqa.to_s].type == :datetime ? record.send(bqa).in_time_zone(BqStream.timezone) : record.send(bqa)).to_s
           QueuedItem.create(table_name: record.class.to_s, record_id: record.id, attr: bqa.to_s, new_value: new_val, updated_at: record.updated_at)
         end
       end
