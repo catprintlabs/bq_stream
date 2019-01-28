@@ -52,19 +52,7 @@ module BqStream
       # Stop processing when all tables are archived
       until BqStream::OldestRecord.where(archived: false).empty? && buffer.empty?
         BqStream::OldestRecord.table_names.each do |table|
-          # Setup up variable based on incoming table 
           table_class = table.constantize
-          table_name = table_class.table_name
-          # Needed if the table is a subclass of another table
-          subclass =
-            # Makes sure it is the sub-classed table
-            if table_class.column_names.include?('type') && table_name != table.underscore.pluralize
-              " WHERE #{table_name}.type IN ('#{table}')"
-            else
-              ''
-            end
-          # This will add the sub-class into an existing query
-          subclass_concat = subclass.blank? ? '' : " #{table_name}.type IN ('#{table}') AND"
 
           BqStream.log(:info, "#{Time.now}: ***** Cycle Table: #{table} *****")
           oldest_attr_recs = BqStream::OldestRecord.where(table_name: table)
@@ -79,12 +67,12 @@ module BqStream
           if record_id_query['rows']
             earliest_record_id = record_id_query['rows'].first['f'].last['v'].to_i
           else
-            earliest_record_id = table_class.find_by_sql("SELECT * FROM #{table_name}#{subclass} ORDER BY id DESC LIMIT 1").first.try(:id)
+            earliest_record_id = table_class.unscoped.order(id: :desc).limit(1).first.try(:id)
           end
           BqStream.log(:info, "#{Time.now}: ***** earliest_record_id: #{earliest_record_id} *****")
 
           # Set id of the first record from back date from the database
-          back_date_id = table_class.find_by_sql("SELECT * FROM #{table_name} WHERE#{subclass_concat} (created_at >= '#{back_date}') ORDER BY id ASC LIMIT 1").first.try(:id)
+          back_date_id = table_class.unscoped.order(id: :asc).where('created_at >= ?', back_date).limit(1).first.try(:id)
           BqStream.log(:info, "#{Time.now}: ***** back_date_record_id: #{back_date_id} *****")
 
           # Continue to work on one table until all records to back date are sent to BigQuery
@@ -92,7 +80,7 @@ module BqStream
             # Grab records between ealiest written id and back date idea
             # limited to the number of records we can grab, keeping under 10_000 rows
             # MUST use find_by_sql to avoid any default scopes (looking at you JobLogRecord)
-            next_batch = table_class.find_by_sql("SELECT * FROM #{table_name} WHERE#{subclass_concat} (id >= #{back_date_id} AND id <= #{earliest_record_id}) ORDER BY id DESC LIMIT #{10_000 / (oldest_attr_recs.count.zero? ? 1 : oldest_attr_recs.count)}") rescue []
+            next_batch = table_class.unscoped.order(id: :asc).where('id >= ? AND id <= ?', back_date_id, earliest_record_id).limit(10_000 / (oldest_attr_recs.count.zero? ? 1 : oldest_attr_recs.count)) rescue []
 
             BqStream.log(:info, "#{Time.now}: ***** Next Batch Count for #{table}: #{next_batch.count} *****")
 
