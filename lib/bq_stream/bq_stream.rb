@@ -3,6 +3,7 @@
 module BqStream
   extend Configuration
   extend Comparison
+  extend Archive
 
   define_setting :client_id
   define_setting :service_email
