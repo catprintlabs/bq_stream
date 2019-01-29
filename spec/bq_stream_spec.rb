@@ -235,7 +235,7 @@ describe BqStream do
         .to eq([[['bq_datastream',
                   { table_name: { type: 'STRING', mode: 'REQUIRED' },
                     record_id:  { type: 'INTEGER', mode: 'REQUIRED' },
-                    attr:         { type: 'STRING', mode: 'NULLABLE' },
+                    attr:       { type: 'STRING', mode: 'NULLABLE' },
                     new_value:  { type: 'STRING', mode: 'NULLABLE' },
                     updated_at: { type: 'TIMESTAMP', mode: 'REQUIRED' } }]]])
     end
@@ -247,11 +247,11 @@ describe BqStream do
         bq_attributes :all
       end
 
-       class TableSecond < ActiveRecord::Base
+      class TableSecond < ActiveRecord::Base
         bq_attributes(only: [:name, :status])
       end
 
-       class TableThird < ActiveRecord::Base
+      class TableThird < ActiveRecord::Base
         bq_attributes(except: [:id, :order, :created_at])
       end
     end
@@ -472,9 +472,8 @@ describe BqStream do
     end
 
     context 'oldest record table' do
-      it 'should be empty until firt dequeue' do
-        expect(BqStream::OldestRecord.all.as_json)
-          .to eq([])
+      it 'should be empty until first dequeue' do
+        expect(BqStream::OldestRecord.all.as_json).to eq([])
       end
 
       it 'should update oldest records' do
@@ -489,67 +488,64 @@ describe BqStream do
                     'table_name' => 'TableFirst',
                     'attr' => 'name',
                     'bq_earliest_update' => nil,
-                    'archived' => true
-                  },
+                    'archived' => true },
                   { 'id' => 3,
                     'table_name' => 'TableFirst',
                     'attr' => 'description',
                     'bq_earliest_update' => nil,
-                    'archived' => true
-                  },
+                    'archived' => true },
                   { 'id' => 4,
                     'table_name' => 'TableFirst',
                     'attr' => 'required',
                     'bq_earliest_update' => nil,
-                    'archived' => true
-                  },
+                    'archived' => true },
                   { 'id' => 5,
                     'table_name' => 'TableFirst',
                     'attr' => 'created_at',
                     'bq_earliest_update' => nil,
-                    'archived' => true
-                  },
+                    'archived' => true },
                   { 'id' => 6,
                     'table_name' => 'TableFirst',
                     'attr' => 'updated_at',
                     'bq_earliest_update' => nil,
-                    'archived' => true
-                  },
+                    'archived' => true },
                   { 'id' => 7,
                     'table_name' => 'TableSecond',
                     'attr' => 'name',
                     'bq_earliest_update' => nil,
-                    'archived' => true
-                  },
+                    'archived' => true },
                   { 'id' => 8,
                     'table_name' => 'TableSecond',
                     'attr' => 'status',
                     'bq_earliest_update' => nil,
-                    'archived' => true
-                  },
+                    'archived' => true },
                   { 'id' => 9,
                     'table_name' => 'TableThird',
                     'attr' => 'name',
                     'bq_earliest_update' => Time.parse('2016-09-21 00:00:00'),
-                    'archived' => true
-                  },
+                    'archived' => true },
                   { 'id' => 10,
                     'table_name' => 'TableThird',
                     'attr' => 'notes',
                     'bq_earliest_update' => Time.parse('2016-09-21 00:00:00'),
-                    'archived' => true
-                  },
+                    'archived' => true },
                   { 'id' => 11,
                     'table_name' => 'TableThird',
                     'attr' => 'updated_at',
                     'bq_earliest_update' => Time.parse('2016-09-21 00:00:00'),
-                    'archived' => true
-                  },
+                    'archived' => true },
                   { 'id' => 12,
                     'table_name' => '! revision !',
                     'attr' => 'None',
                     'bq_earliest_update' => nil,
                     'archived' => true }])
+      end
+    end
+
+    context 'archive oldest records' do
+      it 'should set all oldest record rows archived attributes to true' do
+        BqStream.id_streamline_archive(Time.parse('2016-01-01'), 'dataset')
+        expect(BqStream::OldestRecord.where(archived: false)).to be_empty
       end
     end
   end
