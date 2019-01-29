@@ -1,18 +1,26 @@
 module BqStream
   module Archive
-    def id_streamline_archive(back_date, dataset = BqStream.dataset)
+    def id_streamline_archive(back_date, dataset = ENV['DATASET'])
       BqStream.log(:info, "#{Time.now}: ***** Start Streamline Process *****")
 
       # Initialize an empty buffer for records that will be sent to BigQuery
       buffer = []
 
+      # Set all BigQuery variables
+      client_id =     ENV['CLIENT_ID']
+      service_email = ENV['SERVICE_EMAIL']
+      key =           ENV['KEY']
+      project_id =    ENV['PROJECT_ID']
+      bq_table_name = ENV['BQ_TABLE_NAME'] || 'bq_datastream'
+      time_zome =     ENV['TIMEZONE'] || 'UTC'
+
       # Create BigQuery client connection
       require 'big_query'
       opts = {}
-      opts['client_id']     = BqStream.client_id
-      opts['service_email'] = BqStream.service_email
-      opts['key']           = BqStream.key
-      opts['project_id']    = BqStream.project_id
+      opts['client_id']     = client_id
+      opts['service_email'] = service_email
+      opts['key']           = key
+      opts['project_id']    = project_id
       opts['dataset']       = dataset
       @bq_archiver = BigQuery::Client.new(opts)
 
@@ -20,20 +28,20 @@ module BqStream
       @bq_archiver.create_dataset(dataset) unless @bq_archiver.datasets_formatted.include?(dataset)
 
       # Create table in dataset if not present in BigQuery
-      unless @bq_archiver.tables_formatted.include?(BqStream.bq_table_name)
+      unless @bq_archiver.tables_formatted.include?(bq_table_name)
         bq_table_schema = { table_name:   { type: 'STRING', mode: 'REQUIRED' },
                             record_id:    { type: 'INTEGER', mode: 'REQUIRED' },
                             attr:         { type: 'STRING', mode: 'NULLABLE' },
                             new_value:    { type: 'STRING', mode: 'NULLABLE' },
                             updated_at:   { type: 'TIMESTAMP', mode: 'REQUIRED' } }
-        @bq_archiver.create_table(BqStream.bq_table_name, bq_table_schema)
+        @bq_archiver.create_table(bq_table_name, bq_table_schema)
       end
 
       BqStream.log(:info, "#{Time.now}: ***** Start Update Oldest Record Rows *****")
 
       # Check to make sure all attributes in BigQuery are represented in OldestRecord table
       old_records = @bq_archiver.query('SELECT table_name, attr FROM '\
-                                      "[#{BqStream.project_id}:#{dataset}.#{BqStream.bq_table_name}] "\
+                                      "[#{project_id}:#{dataset}.#{bq_table_name}] "\
                                       'GROUP BY table_name, attr')
       if old_records['rows']
         old_records['rows'].each do |r|
@@ -59,7 +67,7 @@ module BqStream
 
           # See if there are any records for given table in BigQuery
           record_id_query = @bq_archiver.query('SELECT table_name, attr, min(record_id) as earliest_record_id '\
-                                                "FROM [#{BqStream.project_id}:#{dataset}.#{BqStream.bq_table_name}] "\
+                                                "FROM [#{project_id}:#{dataset}.#{bq_table_name}] "\
                                                 "WHERE table_name = '#{table}' AND attr = 'id' "\
                                                 'GROUP BY table_name, attr')
 
@@ -90,7 +98,7 @@ module BqStream
               # Write rows from records for BigQuery and place them into the buffer 
               oldest_attr_recs.uniq.each do |oldest_attr_rec|
                 next_batch.each do |record|
-                  new_val = record[oldest_attr_rec.attr] && table.constantize.type_for_attribute(oldest_attr_rec.attr).type == :datetime ? record[oldest_attr_rec.attr].in_time_zone(BqStream.timezone) : record[oldest_attr_rec.attr].to_s
+                  new_val = record[oldest_attr_rec.attr] && table.constantize.type_for_attribute(oldest_attr_rec.attr).type == :datetime ? record[oldest_attr_rec.attr].in_time_zone(timezone) : record[oldest_attr_rec.attr].to_s
                   buffer << { table_name: table,
                               record_id: record.id,
                               attr: oldest_attr_rec.attr,
@@ -111,7 +119,7 @@ module BqStream
               end
               BqStream.log(:info, "#{Time.now}: ***** Insert #{buffer.count} Records for #{table} to BigQuery *****")
               # Insert rows into BigQuery in one call
-              @bq_archiver.insert(BqStream.bq_table_name, data) unless data.empty?
+              @bq_archiver.insert(bq_table_name, data) unless data.empty?
               # Lower earliest written id by one to get the next record to be written
               earliest_record_id = next_batch.map(&:id).min - 1
               BqStream.log(:info, "#{Time.now}: ***** updated earliest_record_id: #{earliest_record_id} *****")
