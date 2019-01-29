@@ -12,7 +12,7 @@ module BqStream
       key =           ENV['KEY']
       project_id =    ENV['PROJECT_ID']
       bq_table_name = ENV['BQ_TABLE_NAME'] || 'bq_datastream'
-      time_zome =     ENV['TIMEZONE'] || 'UTC'
+      time_zone =     ENV['TIMEZONE'] || 'UTC'
 
       # Create BigQuery client connection
       require 'big_query'
@@ -98,7 +98,7 @@ module BqStream
               # Write rows from records for BigQuery and place them into the buffer 
               oldest_attr_recs.uniq.each do |oldest_attr_rec|
                 next_batch.each do |record|
-                  new_val = record[oldest_attr_rec.attr] && table.constantize.type_for_attribute(oldest_attr_rec.attr).type == :datetime ? record[oldest_attr_rec.attr].in_time_zone(timezone) : record[oldest_attr_rec.attr].to_s
+                  new_val = record[oldest_attr_rec.attr] && table.constantize.type_for_attribute(oldest_attr_rec.attr).type == :datetime ? record[oldest_attr_rec.attr].in_time_zone(time_zone) : record[oldest_attr_rec.attr].to_s
                   buffer << { table_name: table,
                               record_id: record.id,
                               attr: oldest_attr_rec.attr,
