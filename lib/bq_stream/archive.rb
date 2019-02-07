@@ -1,6 +1,6 @@
 module BqStream
   module Archive
-    def id_streamline_archive(back_date, dataset = ENV['DATASET'])
+    def id_streamline_archive(back_date, dataset = "#{ENV['DATASET']}_#{Rails.env}", verify_oldest = false)
       BqStream.log(:info, "#{Time.now}: ***** Start Streamline Process *****")
 
       # Initialize an empty buffer for records that will be sent to BigQuery
@@ -53,6 +53,30 @@ module BqStream
         end
       end
 
+      # Add and Remove bq_attributes based on current bq_attributes 
+      if verify_oldest
+        log(:info, "#{Time.now}: ***** Start Verifying Oldest Records *****")
+        current_deploy =
+          if (`cat #{File.expand_path ''}/REVISION`).blank?
+            'None'
+          else
+            `cat #{File.expand_path ''}/REVISION`
+          end
+        BqStream.bq_attributes.each do |k, v|
+          # add any records to oldest_records that are new (Or more simply make sure that that there is a record using find_by_or_create)
+          v.each do |bqa|
+            BqStream::OldestRecord.find_or_create_by(table_name: k, attr: bqa)
+          end
+          # delete any records that are not in bq_attributes
+          BqStream::OldestRecord.where(table_name: k).each do |rec|
+            rec.destroy unless v.include?(rec.attr.to_sym)
+          end
+        end
+        update_revision = BqStream::OldestRecord.find_or_create_by(table_name: '! revision !')
+        update_revision.update(attr: current_deploy, archived: true)
+        log(:info, "#{Time.now}: ***** Start Verifying Oldest Records *****")
+      end
+
       # Reset all rows archived status to false to run through all tables
       BqStream::OldestRecord.where.not(table_name: '! revision !').update_all(archived: false)
       BqStream.log(:info, "#{Time.now}: ***** End Update Oldest Record Rows *****")
@@ -80,14 +104,20 @@ module BqStream
           BqStream.log(:info, "#{Time.now}: ***** earliest_record_id: #{earliest_record_id} *****")
 
           # Set id of the first record from back date from the database
-          back_date_id = table_class.unscoped.order(id: :asc).where('created_at >= ?', back_date).limit(1).first.try(:id)
+          back_date_id =
+            # See if the given table has a created_at column
+            if table_class.column_names.include?('created_at')
+              table_class.unscoped.order(id: :asc).where('created_at >= ?', back_date).limit(1).first.try(:id)
+            else
+              # Grab very first id if there is no created_at column
+              table_class.unscoped.order(id: :asc).limit(1).first.try(:id)
+            end
           BqStream.log(:info, "#{Time.now}: ***** back_date_record_id: #{back_date_id} *****")
 
           # Continue to work on one table until all records to back date are sent to BigQuery
           until BqStream::OldestRecord.where(table_name: table, archived: false).empty?
-            # Grab records between ealiest written id and back date idea
+            # Grab records between earliest written id and back date idea
             # limited to the number of records we can grab, keeping under 10_000 rows
-            # MUST use find_by_sql to avoid any default scopes (looking at you JobLogRecord)
             next_batch = table_class.unscoped.order(id: :desc).where('id >= ? AND id <= ?', back_date_id, earliest_record_id).limit(10_000 / (oldest_attr_recs.count.zero? ? 1 : oldest_attr_recs.count)) rescue []
             BqStream.log(:info, "#{Time.now}: ***** Next Batch Count for #{table}: #{next_batch.count} *****")
 
@@ -103,7 +133,7 @@ module BqStream
                               record_id: record.id,
                               attr: oldest_attr_rec.attr,
                               new_value: new_val,
-                              updated_at: record.created_at }
+                              updated_at: record.try(:created_at) || Time.now } # Using Time.now if no created_at (shows when put into BigQuery)
                 end
               end
             end
