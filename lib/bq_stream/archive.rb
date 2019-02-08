@@ -118,7 +118,7 @@ module BqStream
           until BqStream::OldestRecord.where(table_name: table, archived: false).empty?
             # Grab records between earliest written id and back date idea
             # limited to the number of records we can grab, keeping under 10_000 rows
-            next_batch = table_class.unscoped.order(id: :desc).where('id >= ? AND id <= ?', back_date_id, earliest_record_id).limit(10_000 / (oldest_attr_recs.count.zero? ? 1 : oldest_attr_recs.count)) rescue []
+            next_batch = table_class.unscoped.order(id: :desc).where('id > ? AND id <= ?', back_date_id, earliest_record_id).limit(10_000 / (oldest_attr_recs.count.zero? ? 1 : oldest_attr_recs.count)) rescue []
             BqStream.log(:info, "#{Time.now}: ***** Next Batch Count for #{table}: #{next_batch.count} *****")
 
             if next_batch.empty?
