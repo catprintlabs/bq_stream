@@ -90,7 +90,6 @@ module BqStream
     def dequeue_items
       log_code = rand(2**256).to_s(36)[0..7]
       log(:info, "#{Time.now}: ***** Dequeue Items Started ***** #{log_code}")
-      log(:info, "#{Time.now}: In dequeue_items Oldest Record count: #{OldestRecord.count}")
       if back_date && (OldestRecord.all.empty? || !OldestRecord.where('bq_earliest_update >= ?', BqStream.back_date).empty?)
         verify_oldest_records
         OldestRecord.update_bq_earliest
@@ -103,9 +102,18 @@ module BqStream
         { table_name: i.table_name, record_id: i.record_id, attr: i.attr,
           new_value: new_val ? new_val : i.new_value, updated_at: i.updated_at }
       end
-      @bq_writer.insert(bq_table_name, data) unless data.empty?
-      records.update_all(sent_to_bq: true)
-      # QueuedItem.where(sent_to_bq: true).delete_all # removing delete for testing TODO: reinstate after test
+
+      if data.empty?
+        log(:info, "#{Time.now}: ***** Data is Empty ***** #{log_code}")
+      else
+        insertion = @bq_writer.insert(bq_table_name, data) unless data.empty?
+        if insertion
+          records.update_all(sent_to_bq: true)
+          # QueuedItem.where(sent_to_bq: true).delete_all # removing delete for testing TODO: reinstate after test
+        else
+          log(:info, "#{Time.now}: ***** Record Insertion has failed ***** #{log_code}")
+        end
+      end
       log(:info, "#{Time.now}: ***** Dequeue Items Ended ***** #{log_code}")
     end
 
