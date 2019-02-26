@@ -55,7 +55,7 @@ module BqStream
 
       # Add and Remove bq_attributes based on current bq_attributes 
       if verify_oldest
-        log(:info, "#{Time.now}: ***** Start Verifying Oldest Records *****")
+        BqStream.log(:info, "#{Time.now}: ***** Start Verifying Oldest Records *****")
         current_deploy =
           if (`cat #{File.expand_path ''}/REVISION`).blank?
             'None'
@@ -74,7 +74,7 @@ module BqStream
         end
         update_revision = BqStream::OldestRecord.find_or_create_by(table_name: '! revision !')
         update_revision.update(attr: current_deploy, archived: true)
-        log(:info, "#{Time.now}: ***** Start Verifying Oldest Records *****")
+        BqStream.log(:info, "#{Time.now}: ***** Start Verifying Oldest Records *****")
       end
 
       # Reset all rows archived status to false to run through all tables
