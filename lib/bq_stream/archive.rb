@@ -2,7 +2,7 @@ module BqStream
   module Archive
     # Gathers record between earliest BigQuery record and given back date 
     def old_records_full_archive(back_date, override_dataset = nil, verify_oldest = false)
-      log(:info, "#{Time.now}: ***** Start Streamline Process *****")
+      log(:info, "#{Time.now}: ***** Start Full Archive Process *****")
       initialize_bq(override_dataset)
       
       log(:info, "#{Time.now}: ***** Start Update Oldest Record Rows *****")
@@ -17,7 +17,7 @@ module BqStream
 
       process_archiving_tables(back_date)
 
-      log(:info, "#{Time.now}: ***** End Streamline Process *****")
+      log(:info, "#{Time.now}: ***** End Full Archive Process *****")
     end
 
     # Sets up BigQuery and means to write records to it  
@@ -183,5 +183,59 @@ module BqStream
       @buffer = []
       log(:info, "#{Time.now}: ***** End data pack and insert *****")
     end
+#   end
+# end
+
+    # Selectively send given Table's attributes to BigQuery
+    # attrs should be sent as an array of symbols
+    def partial_archive(back_date, table, attrs, override_dataset = nil)
+      log(:info, "#{Time.now}: ***** Start Partial Archive Process *****")
+      initialize_bq(override_dataset)
+
+      assign_earliest_record_id(table)
+      assign_back_date_id(table.constantize, back_date)
+
+      oldest_attr_recs = []
+      attrs.each { |a| oldest_attr_recs << BqStream::OldestRecord.where(table_name: table, attr: a.to_s).try(:first) }
+      oldest_attr_recs.update_all(archived: false)
+      archive_table(table, @back_date_id, @earliest_record_id, oldest_attr_recs)
+
+      log(:info, "#{Time.now}: ***** End Partial Archive Process *****")
+    end
+
+    def archive_table(table, back_id, earliest_id, oldest_attr_recs)
+      @buffer = []
+      until BqStream::OldestRecord.where(table_name: table, archived: false).empty?
+        next_batch = 
+          table.constantize.unscoped.order(id: :desc).where('id > ? AND id <= ?', back_id, earliest_id)
+            .limit(10_000 / (oldest_attr_recs.count.zero? ? 1 : oldest_attr_recs.count)) rescue []
+        if next_batch.empty?
+          OldestRecord.where(table_name: table).each { |row| row.update(archived: true) }
+        else
+          oldest_attr_recs.uniq.each do |oldest_attr_rec|
+            next_batch.each do |record|
+              new_val = record[oldest_attr_rec.attr] && table.constantize.type_for_attribute(oldest_attr_rec.attr).type == :datetime ? record[oldest_attr_rec.attr].in_time_zone(time_zone) : record[oldest_attr_rec.attr].to_s
+              @buffer << { table_name: table,
+                           record_id: record.id,
+                           attr: oldest_attr_rec.attr,
+                           new_value: new_val,
+                           updated_at: record.try(:created_at) || Time.now }
+            end
+          end
+        end
+
+        unless @buffer.empty?
+          data = buffer.collect do |i|
+            new_val = encode_value(i[:new_value]) rescue nil
+            { table_name: i[:table_name], record_id: i[:record_id], attr: i[:attr],
+              new_value: new_val ? new_val : i[:new_value], updated_at: i[:updated_at] }
+          end
+          @bq_writer.insert(bq_table_name, data) unless data.empty?
+          earliest_id = next_batch.map(&:id).min - 1
+          @buffer = []
+        end
+      end
+    end
+
   end
 end
