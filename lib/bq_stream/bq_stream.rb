@@ -1,4 +1,4 @@
-# require 'bq_stream/config'
+require 'big_query'
 
 module BqStream
   extend Configuration
@@ -32,14 +32,13 @@ module BqStream
       error_logger.send(type, message)
     end
 
-    def create_bq_writer
-      require 'big_query'
+    def create_bq_writer(dataset_override = nil)
       opts = {}
       opts['client_id']     = client_id
       opts['service_email'] = service_email
       opts['key']           = key
       opts['project_id']    = project_id
-      opts['dataset']       = dataset
+      opts['dataset']       = dataset_override ? dataset_override : dataset
       @bq_writer = BigQuery::Client.new(opts)
     end
 
