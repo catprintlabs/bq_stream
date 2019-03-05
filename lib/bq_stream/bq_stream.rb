@@ -103,7 +103,7 @@ module BqStream
         { table_name: i.table_name, record_id: i.record_id, attr: i.attr,
           new_value: new_val ? new_val : i.new_value, updated_at: i.updated_at }
       end
-      insertion = data.empty? ? false : @bq_writer.insert('bq_table_name', data) rescue nil
+      insertion = data.empty? ? false : @bq_writer.insert(bq_table_name, data) rescue nil
       if insertion.nil?
         log(:info, "#{Time.now}: ***** BigQuery Insertion to #{project_id}:#{dataset}.#{bq_table_name} Failed *****")
         Rollbar.error("BigQuery Insertion to #{project_id}:#{dataset}.#{bq_table_name} Failed") if report_to_rollbar

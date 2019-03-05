@@ -544,7 +544,7 @@ describe BqStream do
 
     context 'archive oldest records' do
       it 'should set all oldest record rows archived attributes to true' do
-        BqStream.id_streamline_archive(Time.parse('2016-01-01'), 'dataset')
+        BqStream.old_records_full_archive(Time.parse('2016-01-01'), 'dataset')
         expect(BqStream::OldestRecord.where(archived: false)).to be_empty
       end
     end
