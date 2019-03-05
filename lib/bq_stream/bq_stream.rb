@@ -14,6 +14,7 @@ module BqStream
   define_setting :back_date, nil
   define_setting :batch_size, 1000
   define_setting :timezone, 'UTC'
+  define_setting :report_to_rollbar, Object.const_defined?('Rollbar') && ENV['BQ_ROLLBAR']
 
   class << self
     attr_accessor :logger
@@ -96,13 +97,17 @@ module BqStream
       end
       create_bq_writer
       # Batch sending to BigQuery is limited to 10_000 rows
-      records = QueuedItem.where(sent_to_bq: nil).limit([batch_size, 10_000].min)
+      records = QueuedItem.where(sent_to_bq: nil) # .limit([batch_size, 10_000].min)
       data = records.collect do |i|
         new_val = encode_value(i.new_value) rescue nil
         { table_name: i.table_name, record_id: i.record_id, attr: i.attr,
           new_value: new_val ? new_val : i.new_value, updated_at: i.updated_at }
       end
-      insertion = data.empty? ? nil : @bq_writer.insert('bq_table_name', data) rescue nil
+      insertion = data.empty? ? false : @bq_writer.insert('bq_table_name', data) rescue nil
+      if insertion.nil?
+        log(:info, "#{Time.now}: ***** BigQuery Insertion to #{project_id}:#{dataset}.#{bq_table_name} Failed *****")
+        Rollbar.error("BigQuery Insertion to #{project_id}:#{dataset}.#{bq_table_name} Failed") if report_to_rollbar
+      end
       records.update_all(sent_to_bq: true) if insertion
       QueuedItem.where(sent_to_bq: true).delete_all
       log(:info, "#{Time.now}: ***** Dequeue Items Ended ***** #{log_code}")
