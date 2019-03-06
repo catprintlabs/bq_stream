@@ -25,12 +25,16 @@ module BqStream
     def partial_archive(back_date, table, attrs, override_dataset = nil)
       log(:info, "#{Time.now}: ***** Start Partial Archive Process *****")
       initialize_bq(override_dataset)
+      verify_oldest_records
 
       assign_earliest_record_id(table)
       assign_back_date_id(table.constantize, back_date)
 
       oldest_attr_recs = []
-      attrs.each { |a| oldest_attr_recs << BqStream::OldestRecord.where(table_name: table, attr: a.to_s).try(:first) }
+      attrs.each do |a|
+        record = OldestRecord.where(table_name: table, attr: a.to_s).try(:first)
+        oldest_attr_recs << record if record
+      end
       oldest_attr_recs.each { |rec| rec.update(archived: false) }
       archive_table(table, oldest_attr_recs)
 
@@ -61,9 +65,8 @@ module BqStream
     # Check to make sure all attributes that are in BigQuery and bq_attributes are represented in OldestRecord table
     def update_oldest_records
       old_records = @bq_writer.query('SELECT table_name, attr FROM '\
-                                      "[#{project_id}:#{ @bq_writer.dataset}.#{bq_table_name}] "\
+                                      "[#{project_id}:#{@bq_writer.dataset}.#{bq_table_name}] "\
                                       'GROUP BY table_name, attr')
-
       if old_records['rows']
         old_records['rows'].each do |r|
           table = r['f'][0]['v']
