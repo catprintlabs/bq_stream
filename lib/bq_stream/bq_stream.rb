@@ -109,7 +109,7 @@ module BqStream
         Rollbar.error("BigQuery Insertion to #{project_id}:#{dataset}.#{bq_table_name} Failed") if report_to_rollbar
       end
       records.update_all(sent_to_bq: true) if insertion
-      QueuedItem.where(sent_to_bq: true).delete_all
+      # QueuedItem.where(sent_to_bq: true).delete_all
       log(:info, "#{Time.now}: ***** Dequeue Items Ended ***** #{log_code}")
     end
 
