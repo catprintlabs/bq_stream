@@ -71,12 +71,13 @@ module BqStream
         old_records['rows'].each do |r|
           table = r['f'][0]['v']
           trait = r['f'][1]['v']
-          if !trait.nil? && bq_attributes[table] && bq_attributes[table].include?(trait.to_sym) 
+
+          next unless trait && bq_attributes[table] 
+
+          if bq_attributes[table].include?(trait.to_sym) 
             OldestRecord.find_or_create_by(table_name: table, attr: trait)
           else
-            if !trait.nil? && bq_attributes[table]
-              log(:info, "#{Time.now}: No longer tracking: #{table}: #{trait}")
-            end
+            log(:info, "#{Time.now}: No longer tracking: #{table}: #{trait}")
           end
         end
       end
@@ -91,14 +92,14 @@ module BqStream
         else
           `cat #{File.expand_path ''}/REVISION`
         end
-      bq_attributes.each do |k, v|
+      bq_attributes.each do |model, attrs|
         # add any records to oldest_records that are new (Or more simply make sure that that there is a record using find_by_or_create)
-        v.each do |bqa|
-          OldestRecord.find_or_create_by(table_name: k, attr: bqa)
+        attrs.each do |attr|
+          OldestRecord.find_or_create_by(table_name: model, attr: attr)
         end
         # delete any records that are not in bq_attributes
-        OldestRecord.where(table_name: k).each do |rec|
-          rec.destroy unless v.include?(rec.attr.to_sym)
+        OldestRecord.where(table_name: model).each do |record|
+          record.destroy unless attrs.include?(record.attr.to_sym)
         end
       end
       update_revision = OldestRecord.find_or_create_by(table_name: '! revision !')
@@ -171,7 +172,7 @@ module BqStream
 
       if @next_batch.empty?
         # If there are no records in range mark the table's attributes as archived
-        OldestRecord.where(table_name: table).each { |row| row.update(archived: true) }
+        OldestRecord.where(table_name: table).update_all(archived: true)
       else
         # Write rows from records for BigQuery and place them into the buffer 
         @oldest_attr_recs.uniq.each do |oldest_attr_rec|
@@ -219,7 +220,7 @@ module BqStream
           table.constantize.unscoped.order(id: :desc).where('id > ? AND id <= ?', @back_date_id, @earliest_record_id)
             .limit(10_000 / (oldest_attr_recs.count.zero? ? 1 : oldest_attr_recs.count)) rescue []
         if @next_batch.empty?
-          OldestRecord.where(table_name: table).each { |row| row.update(archived: true) }
+          OldestRecord.where(table_name: table).update_all(archived: true)
         else
           oldest_attr_recs.uniq.each do |oldest_attr_rec|
             @next_batch.each do |record|
