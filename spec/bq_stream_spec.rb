@@ -235,7 +235,7 @@ describe BqStream do
         .to eq([[['bq_datastream',
                   { table_name: { type: 'STRING', mode: 'REQUIRED' },
                     record_id:  { type: 'INTEGER', mode: 'REQUIRED' },
-                    attr:         { type: 'STRING', mode: 'NULLABLE' },
+                    attr:       { type: 'STRING', mode: 'NULLABLE' },
                     new_value:  { type: 'STRING', mode: 'NULLABLE' },
                     updated_at: { type: 'TIMESTAMP', mode: 'REQUIRED' } }]]])
     end
@@ -247,11 +247,11 @@ describe BqStream do
         bq_attributes :all
       end
 
-       class TableSecond < ActiveRecord::Base
+      class TableSecond < ActiveRecord::Base
         bq_attributes(only: [:name, :status])
       end
 
-       class TableThird < ActiveRecord::Base
+      class TableThird < ActiveRecord::Base
         bq_attributes(except: [:id, :order, :created_at])
       end
     end
@@ -395,6 +395,115 @@ describe BqStream do
                 }])
     end
 
+    it 'should complete full archive to bigquery' do
+      BqStream.old_records_full_archive(@time_stamp)
+      expect(BqStream.bq_writer.initial_args)
+        .to eq([
+                 {
+                   'client_id' => 'client_id',
+                   'service_email' => 'service_email',
+                   'key' => 'key',
+                   'project_id' => 'project_id',
+                   'dataset' => 'dataset'
+                 }
+               ])
+      expect(BqStream.bq_writer.inserted_records)
+        .to eq([[['bq_datastream',
+                  [{ table_name: 'TableThird', 
+                     record_id: @third_record.id,
+                     attr: 'notes',
+                     new_value: '12.50',
+                     updated_at: @time_stamp },
+                   { table_name: 'TableThird',
+                     record_id: @third_record.id,
+                     attr: 'updated_at',
+                     new_value: 'Sun, 01 Jan 2017 00:00:00 UTC +00:00',
+                     updated_at: @time_stamp },
+                   { table_name: 'TableThird',
+                     record_id: @third_record.id,
+                     attr: 'name',
+                     new_value: 'third record',
+                     updated_at: @time_stamp }]]],
+                [['bq_datastream',
+                  [{ table_name: 'TableFirst',
+                     record_id: 2,
+                     attr: 'name',
+                     new_value: 'primary record',
+                     updated_at: @time_stamp },
+                   { table_name: 'TableFirst',
+                     record_id: @first_record.id,
+                     attr: 'created_at',
+                     new_value: 'Sun, 01 Jan 2017 00:00:00 UTC +00:00',
+                     updated_at: @time_stamp },
+                   { table_name: 'TableFirst',
+                     record_id: @first_record.id,
+                     attr: 'description',
+                     new_value: 'first into the table',
+                     updated_at: @time_stamp },
+                   { table_name: 'TableFirst',
+                     record_id: @first_record.id,
+                     attr: 'id',
+                     new_value: @first_record.id.to_s,
+                     updated_at: @time_stamp },
+                   { table_name: 'TableFirst',
+                     record_id: @first_record.id,
+                     attr: 'required',
+                     new_value: 'false',
+                     updated_at: @time_stamp },
+                   { table_name: 'TableFirst',
+                     record_id: @first_record.id,
+                     attr: 'updated_at',
+                     new_value: @time_stamp.to_s,
+                     updated_at: @time_stamp }]]]])
+    end
+
+    # Also tests that only valid attributes to be sent to BigQuery
+    it 'should complete partial archive with valid attributes to bigquery' do
+      BqStream.partial_archive(@time_stamp, 'TableFirst', [:name, :description, :required, :fake_attr])
+      expect(BqStream.bq_writer.initial_args)
+        .to eq([
+                 {
+                   'client_id' => 'client_id',
+                   'service_email' => 'service_email',
+                   'key' => 'key',
+                   'project_id' => 'project_id',
+                   'dataset' => 'dataset'
+                 }
+               ])
+      expect(BqStream.bq_writer.inserted_records)
+        .to eq([[['bq_datastream',
+                  [{ table_name: 'TableFirst', 
+                     record_id: @first_record.id,
+                     attr: 'name',
+                     new_value: 'primary record',
+                     updated_at: @time_stamp },
+                   { table_name: 'TableFirst', 
+                     record_id: TableFirst.second.id,
+                     attr: 'name',
+                     new_value: 'primary record',
+                     updated_at: @time_stamp },
+                   { table_name: 'TableFirst', 
+                     record_id: @first_record.id,
+                     attr: 'description',
+                     new_value: 'first into the table',
+                     updated_at: @time_stamp },
+                   { table_name: 'TableFirst', 
+                     record_id: TableFirst.second.id,
+                     attr: 'description',
+                     new_value: 'first into the table',
+                     updated_at: @time_stamp },
+                   { table_name: 'TableFirst', 
+                     record_id: @first_record.id,
+                     attr: 'required',
+                     new_value: 'false',
+                     updated_at: @time_stamp },
+                   { table_name: 'TableFirst', 
+                     record_id: TableFirst.second.id,
+                     attr: 'required',
+                     new_value: 'false',
+                     updated_at: @time_stamp }]]]])
+    end
+
     it 'should send queued items to bigquery' do
       BqStream.dequeue_items
       expect(BqStream.bq_writer.initial_args)
@@ -472,9 +581,8 @@ describe BqStream do
     end
 
     context 'oldest record table' do
-      it 'should be empty until firt dequeue' do
-        expect(BqStream::OldestRecord.all.as_json)
-          .to eq([])
+      it 'should be empty until first dequeue' do
+        expect(BqStream::OldestRecord.all.as_json).to eq([])
       end
 
       it 'should update oldest records' do
@@ -489,67 +597,64 @@ describe BqStream do
                     'table_name' => 'TableFirst',
                     'attr' => 'name',
                     'bq_earliest_update' => nil,
-                    'archived' => true
-                  },
+                    'archived' => true },
                   { 'id' => 3,
                     'table_name' => 'TableFirst',
                     'attr' => 'description',
                     'bq_earliest_update' => nil,
-                    'archived' => true
-                  },
+                    'archived' => true },
                   { 'id' => 4,
                     'table_name' => 'TableFirst',
                     'attr' => 'required',
                     'bq_earliest_update' => nil,
-                    'archived' => true
-                  },
+                    'archived' => true },
                   { 'id' => 5,
                     'table_name' => 'TableFirst',
                     'attr' => 'created_at',
                     'bq_earliest_update' => nil,
-                    'archived' => true
-                  },
+                    'archived' => true },
                   { 'id' => 6,
                     'table_name' => 'TableFirst',
                     'attr' => 'updated_at',
                     'bq_earliest_update' => nil,
-                    'archived' => true
-                  },
+                    'archived' => true },
                   { 'id' => 7,
                     'table_name' => 'TableSecond',
                     'attr' => 'name',
                     'bq_earliest_update' => nil,
-                    'archived' => true
-                  },
+                    'archived' => true },
                   { 'id' => 8,
                     'table_name' => 'TableSecond',
                     'attr' => 'status',
                     'bq_earliest_update' => nil,
-                    'archived' => true
-                  },
+                    'archived' => true },
                   { 'id' => 9,
                     'table_name' => 'TableThird',
                     'attr' => 'name',
                     'bq_earliest_update' => Time.parse('2016-09-21 00:00:00'),
-                    'archived' => true
-                  },
+                    'archived' => true },
                   { 'id' => 10,
                     'table_name' => 'TableThird',
                     'attr' => 'notes',
                     'bq_earliest_update' => Time.parse('2016-09-21 00:00:00'),
-                    'archived' => true
-                  },
+                    'archived' => true },
                   { 'id' => 11,
                     'table_name' => 'TableThird',
                     'attr' => 'updated_at',
                     'bq_earliest_update' => Time.parse('2016-09-21 00:00:00'),
-                    'archived' => true
-                  },
+                    'archived' => true },
                   { 'id' => 12,
                     'table_name' => '! revision !',
                     'attr' => 'None',
                     'bq_earliest_update' => nil,
                     'archived' => true }])
+      end
+    end
+
+    context 'archive oldest records' do
+      it 'should set all oldest record rows archived attributes to true' do
+        BqStream.old_records_full_archive(Time.parse('2016-01-01'), 'dataset')
+        expect(BqStream::OldestRecord.where(archived: false)).to be_empty
       end
     end
   end

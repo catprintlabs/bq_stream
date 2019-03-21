@@ -1,8 +1,9 @@
-# require 'bq_stream/config'
+require 'big_query'
 
 module BqStream
   extend Configuration
   extend Comparison
+  extend Archive
 
   define_setting :client_id
   define_setting :service_email
@@ -13,6 +14,7 @@ module BqStream
   define_setting :back_date, nil
   define_setting :batch_size, 1000
   define_setting :timezone, 'UTC'
+  define_setting :report_to_rollbar, Object.const_defined?('Rollbar') && ENV['BQ_ROLLBAR']
 
   class << self
     attr_accessor :logger
@@ -31,14 +33,13 @@ module BqStream
       error_logger.send(type, message)
     end
 
-    def create_bq_writer
-      require 'big_query'
+    def create_bq_writer(dataset_override = nil)
       opts = {}
       opts['client_id']     = client_id
       opts['service_email'] = service_email
       opts['key']           = key
       opts['project_id']    = project_id
-      opts['dataset']       = dataset
+      opts['dataset']       = dataset_override ? dataset_override : dataset
       @bq_writer = BigQuery::Client.new(opts)
     end
 
@@ -96,31 +97,26 @@ module BqStream
       end
       create_bq_writer
       # Batch sending to BigQuery is limited to 10_000 rows
-      records = QueuedItem.where(sent_to_bq: nil).limit([batch_size, 10_000].min)
+      records = QueuedItem.where(sent_to_bq: nil) # .limit([batch_size, 10_000].min)
       data = records.collect do |i|
         new_val = encode_value(i.new_value) rescue nil
         { table_name: i.table_name, record_id: i.record_id, attr: i.attr,
           new_value: new_val ? new_val : i.new_value, updated_at: i.updated_at }
       end
-
-      if data.empty?
-        log(:info, "#{Time.now}: ***** Data is Empty ***** #{log_code}")
-      else
-        insertion = @bq_writer.insert(bq_table_name, data) unless data.empty?
-        if insertion
-          records.update_all(sent_to_bq: true)
-          # QueuedItem.where(sent_to_bq: true).delete_all # removing delete for testing TODO: reinstate after test
-        else
-          log(:info, "#{Time.now}: ***** Record Insertion has failed ***** #{log_code}")
-        end
+      insertion = data.empty? ? false : @bq_writer.insert(bq_table_name, data) rescue nil
+      if insertion.nil?
+        log(:info, "#{Time.now}: ***** BigQuery Insertion to #{project_id}:#{dataset}.#{bq_table_name} Failed *****")
+        Rollbar.error("BigQuery Insertion to #{project_id}:#{dataset}.#{bq_table_name} Failed") if report_to_rollbar
       end
+      records.update_all(sent_to_bq: true) if insertion
+      # QueuedItem.where(sent_to_bq: true).delete_all
       log(:info, "#{Time.now}: ***** Dequeue Items Ended ***** #{log_code}")
     end
 
     def insert_missing_records(records, bq_attributes)
       bq_attributes.each do |bqa|
         records.each do |record|
-          new_val = (record.class.columns_hash[bqa.to_s].type == :datetime ? record.send(bqa).in_time_zone(BqStream.timezone) : record.send(bqa)).to_s
+          new_val = (!record.send(bqa).nil? && record.class.columns_hash[bqa.to_s].type == :datetime ? record.send(bqa).in_time_zone(BqStream.timezone) : record.send(bqa)).to_s
           QueuedItem.create(table_name: record.class.to_s, record_id: record.id, attr: bqa.to_s, new_value: new_val, updated_at: record.updated_at)
         end
       end

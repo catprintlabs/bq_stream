@@ -39,7 +39,7 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency 'pry-rescue'
   spec.add_development_dependency 'rake', '~> 10.0'
   spec.add_development_dependency 'rspec', '~> 3.2'
-  spec.add_development_dependency 'sqlite3'
+  spec.add_development_dependency 'sqlite3', '~> 1.3.6'
   spec.add_development_dependency 'timecop'
   spec.add_development_dependency 'database_cleaner'
   spec.add_dependency 'activerecord'
