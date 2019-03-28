@@ -13,6 +13,7 @@ describe BqStream do
           t.datetime  :updated_at
           t.boolean   :sent_to_bq
           t.index     :sent_to_bq
+          t.datetime  :time_sent
         end
       end
     end
@@ -286,14 +287,15 @@ describe BqStream do
     it 'should write queued item to table when bq_attributes is called' do
       expect(BqStream::QueuedItem.all.as_json)
         .to eq([{
-                 'id' => 1,
-                 'table_name' => 'TableFirst',
-                 'record_id' => @first_record.id,
-                 'attr' => 'id',
-                 'new_value' => '1',
-                 'updated_at' => @time_stamp,
-                 'sent_to_bq' => nil
-               },
+                  'id' => 1,
+                  'table_name' => 'TableFirst',
+                  'record_id' => @first_record.id,
+                  'attr' => 'id',
+                  'new_value' => @first_record.id.to_s,
+                  'updated_at' => @time_stamp,
+                  'sent_to_bq' => nil,
+                  'time_sent' => nil
+                },
                 {
                   'id' => 2,
                   'table_name' => 'TableFirst',
@@ -301,7 +303,8 @@ describe BqStream do
                   'attr' => 'name',
                   'new_value' => 'primary record',
                   'updated_at' => @time_stamp,
-                  'sent_to_bq' => nil
+                  'sent_to_bq' => nil,
+                  'time_sent' => nil
                 },
                 {
                   'id' => 3,
@@ -310,7 +313,8 @@ describe BqStream do
                   'attr' => 'description',
                   'new_value' => 'first into the table',
                   'updated_at' => @time_stamp,
-                  'sent_to_bq' => nil
+                  'sent_to_bq' => nil,
+                  'time_sent' => nil
                 },
                 {
                   'id' => 4,
@@ -319,7 +323,8 @@ describe BqStream do
                   'attr' => 'required',
                   'new_value' => 'true',
                   'updated_at' => @time_stamp,
-                  'sent_to_bq' => nil
+                  'sent_to_bq' => nil,
+                  'time_sent' => nil
                 },
                 {
                   'id' => 5,
@@ -328,7 +333,8 @@ describe BqStream do
                   'attr' => 'created_at',
                   'new_value' => @time_stamp.to_s,
                   'updated_at' => @time_stamp,
-                  'sent_to_bq' => nil
+                  'sent_to_bq' => nil,
+                  'time_sent' => nil
                 },
                 {
                   'id' => 6,
@@ -337,7 +343,8 @@ describe BqStream do
                   'attr' => 'updated_at',
                   'new_value' => @time_stamp.to_s,
                   'updated_at' => @time_stamp,
-                  'sent_to_bq' => nil
+                  'sent_to_bq' => nil,
+                  'time_sent' => nil
                 },
                 {
                   'id' => 7,
@@ -346,7 +353,8 @@ describe BqStream do
                   'attr' => 'name',
                   'new_value' => 'secondary record',
                   'updated_at' => @time_stamp,
-                  'sent_to_bq' => nil
+                  'sent_to_bq' => nil,
+                  'time_sent' => nil
                 },
                 {
                   'id' => 8,
@@ -355,7 +363,8 @@ describe BqStream do
                   'attr' => 'status',
                   'new_value' => 'active',
                   'updated_at' => @time_stamp,
-                  'sent_to_bq' => nil
+                  'sent_to_bq' => nil,
+                  'time_sent' => nil
                 },
                 {
                   'id' => 9,
@@ -364,7 +373,8 @@ describe BqStream do
                   'attr' => 'name',
                   'new_value' => 'third record',
                   'updated_at' => @time_stamp,
-                  'sent_to_bq' => nil
+                  'sent_to_bq' => nil,
+                  'time_sent' => nil
                 },
                 {
                   'id' => 10,
@@ -373,7 +383,8 @@ describe BqStream do
                   'attr' => 'notes',
                   'new_value' => '12.50',
                   'updated_at' => @time_stamp,
-                  'sent_to_bq' => nil
+                  'sent_to_bq' => nil,
+                  'time_sent' => nil
                 },
                 {
                   'id' => 11,
@@ -382,7 +393,8 @@ describe BqStream do
                   'attr' => 'updated_at',
                   'new_value' => @time_stamp.to_s,
                   'updated_at' => @time_stamp,
-                  'sent_to_bq' => nil
+                  'sent_to_bq' => nil,
+                  'time_sent' => nil
                 },
                 {
                   'id' => 12,
@@ -391,7 +403,8 @@ describe BqStream do
                   'attr' => 'Destroyed',
                   'new_value' => 'True',
                   'updated_at' => @time_stamp,
-                  'sent_to_bq' => nil
+                  'sent_to_bq' => nil,
+                  'time_sent' => nil
                 }])
     end
 
@@ -417,7 +430,7 @@ describe BqStream do
                    { table_name: 'TableThird',
                      record_id: @third_record.id,
                      attr: 'updated_at',
-                     new_value: 'Sun, 01 Jan 2017 00:00:00 UTC +00:00',
+                     new_value: @time_stamp,
                      updated_at: @time_stamp },
                    { table_name: 'TableThird',
                      record_id: @third_record.id,
@@ -426,14 +439,14 @@ describe BqStream do
                      updated_at: @time_stamp }]]],
                 [['bq_datastream',
                   [{ table_name: 'TableFirst',
-                     record_id: 2,
+                     record_id: @second_record.id,
                      attr: 'name',
                      new_value: 'primary record',
                      updated_at: @time_stamp },
                    { table_name: 'TableFirst',
                      record_id: @first_record.id,
                      attr: 'created_at',
-                     new_value: 'Sun, 01 Jan 2017 00:00:00 UTC +00:00',
+                     new_value: @time_stamp,
                      updated_at: @time_stamp },
                    { table_name: 'TableFirst',
                      record_id: @first_record.id,
@@ -522,62 +535,183 @@ describe BqStream do
                      record_id: @first_record.id,
                      attr: 'id',
                      new_value: @first_record.id.to_s,
-                     updated_at: Time.parse('2016-12-31 19:00:00') },
+                     updated_at: @time_stamp },
                    { table_name: 'TableFirst',
                      record_id: @first_record.id,
                      attr: 'name',
                      new_value: 'primary record',
-                     updated_at: Time.parse('2016-12-31 19:00:00') },
+                     updated_at: @time_stamp },
                    { table_name: 'TableFirst',
                      record_id: @first_record.id,
                      attr: 'description',
                      new_value: 'first into the table',
-                     updated_at: Time.parse('2016-12-31 19:00:00') },
+                     updated_at: @time_stamp },
                    { table_name: 'TableFirst',
                      record_id: @first_record.id,
                      attr: 'required',
                      new_value: 'true',
-                     updated_at: Time.parse('2016-12-31 19:00:00') },
+                     updated_at: @time_stamp },
                    { table_name: 'TableFirst',
                      record_id: @first_record.id,
                      attr: 'created_at',
                      new_value: @time_stamp.to_s,
-                     updated_at: Time.parse('2016-12-31 19:00:00') },
+                     updated_at: @time_stamp },
                    { table_name: 'TableFirst',
                      record_id: @first_record.id,
                      attr: 'updated_at',
                      new_value: @time_stamp.to_s,
-                     updated_at: Time.parse('2016-12-31 19:00:00') },
+                     updated_at: @time_stamp },
                    { table_name: 'TableSecond',
                      record_id: @second_record.id,
                      attr: 'name',
                      new_value: 'secondary record',
-                     updated_at: Time.parse('2016-12-31 19:00:00') },
+                     updated_at: @time_stamp },
                    { table_name: 'TableSecond',
                      record_id: @second_record.id,
                      attr: 'status',
                      new_value: 'active',
-                     updated_at: Time.parse('2016-12-31 19:00:00') },
+                     updated_at: @time_stamp },
                    { table_name: 'TableThird',
                      record_id: @third_record.id,
                      attr: 'name',
                      new_value: 'third record',
-                     updated_at: Time.parse('2016-12-31 19:00:00') },
+                     updated_at: @time_stamp },
                    { table_name: 'TableThird',
                      record_id: @third_record.id,
                      attr: 'notes',
                      new_value: '12.50',
-                     updated_at: Time.parse('2016-12-31 19:00:00') },
+                     updated_at: @time_stamp },
                    { table_name: 'TableThird',
                      record_id: @third_record.id,
                      attr: 'updated_at',
-                     new_value: '2017-01-01 00:00:00 UTC',
-                     updated_at: Time.parse('2016-12-31 19:00:00') },
+                     new_value: @time_stamp.to_s,
+                     updated_at: @time_stamp },
                    { table_name: 'TableSecond',
                      record_id: @second_record.id,
                      attr: 'Destroyed',
                      new_value: 'True',
-                     updated_at: Time.parse('2016-12-31 19:00:00') }]]]])
+                     updated_at: @time_stamp }]]]])
+      expect(BqStream::QueuedItem.all.as_json)
+        .to eq([{
+                  'id' => 1,
+                  'table_name' => 'TableFirst',
+                  'record_id' => @first_record.id,
+                  'attr' => 'id',
+                  'new_value' => @first_record.id.to_s,
+                  'updated_at' => @time_stamp,
+                  'sent_to_bq' => true,
+                  'time_sent' => @time_stamp
+                },
+                {
+                  'id' => 2,
+                  'table_name' => 'TableFirst',
+                  'record_id' => @first_record.id,
+                  'attr' => 'name',
+                  'new_value' => 'primary record',
+                  'updated_at' => @time_stamp,
+                  'sent_to_bq' => true,
+                  'time_sent' => @time_stamp
+                },
+                {
+                  'id' => 3,
+                  'table_name' => 'TableFirst',
+                  'record_id' => @first_record.id,
+                  'attr' => 'description',
+                  'new_value' => 'first into the table',
+                  'updated_at' => @time_stamp,
+                  'sent_to_bq' => true,
+                  'time_sent' => @time_stamp
+                },
+                {
+                  'id' => 4,
+                  'table_name' => 'TableFirst',
+                  'record_id' => @first_record.id,
+                  'attr' => 'required',
+                  'new_value' => 'true',
+                  'updated_at' => @time_stamp,
+                  'sent_to_bq' => true,
+                  'time_sent' => @time_stamp
+                },
+                {
+                  'id' => 5,
+                  'table_name' => 'TableFirst',
+                  'record_id' => @first_record.id,
+                  'attr' => 'created_at',
+                  'new_value' => @time_stamp.to_s,
+                  'updated_at' => @time_stamp,
+                  'sent_to_bq' => true,
+                  'time_sent' => @time_stamp
+                },
+                {
+                  'id' => 6,
+                  'table_name' => 'TableFirst',
+                  'record_id' => @first_record.id,
+                  'attr' => 'updated_at',
+                  'new_value' => @time_stamp.to_s,
+                  'updated_at' => @time_stamp,
+                  'sent_to_bq' => true,
+                  'time_sent' => @time_stamp
+                },
+                {
+                  'id' => 7,
+                  'table_name' => 'TableSecond',
+                  'record_id' => @second_record.id,
+                  'attr' => 'name',
+                  'new_value' => 'secondary record',
+                  'updated_at' => @time_stamp,
+                  'sent_to_bq' => true,
+                  'time_sent' => @time_stamp
+                },
+                {
+                  'id' => 8,
+                  'table_name' => 'TableSecond',
+                  'record_id' => @second_record.id,
+                  'attr' => 'status',
+                  'new_value' => 'active',
+                  'updated_at' => @time_stamp,
+                  'sent_to_bq' => true,
+                  'time_sent' => @time_stamp
+                },
+                {
+                  'id' => 9,
+                  'table_name' => 'TableThird',
+                  'record_id' => @third_record.id,
+                  'attr' => 'name',
+                  'new_value' => 'third record',
+                  'updated_at' => @time_stamp,
+                  'sent_to_bq' => true,
+                  'time_sent' => @time_stamp
+                },
+                {
+                  'id' => 10,
+                  'table_name' => 'TableThird',
+                  'record_id' => @third_record.id,
+                  'attr' => 'notes',
+                  'new_value' => '12.50',
+                  'updated_at' => @time_stamp,
+                  'sent_to_bq' => true,
+                  'time_sent' => @time_stamp
+                },
+                {
+                  'id' => 11,
+                  'table_name' => 'TableThird',
+                  'record_id' => @third_record.id,
+                  'attr' => 'updated_at',
+                  'new_value' => @time_stamp.to_s,
+                  'updated_at' => @time_stamp,
+                  'sent_to_bq' => true,
+                  'time_sent' => @time_stamp
+                },
+                {
+                  'id' => 12,
+                  'table_name' => 'TableSecond',
+                  'record_id' => @second_record.id,
+                  'attr' => 'Destroyed',
+                  'new_value' => 'True',
+                  'updated_at' => @time_stamp,
+                  'sent_to_bq' => true,
+                  'time_sent' => @time_stamp
+                }])
     end
 
     context 'oldest record table' do
@@ -653,7 +787,7 @@ describe BqStream do
 
     context 'archive oldest records' do
       it 'should set all oldest record rows archived attributes to true' do
-        BqStream.old_records_full_archive(Time.parse('2016-01-01'), 'dataset')
+        BqStream.old_records_full_archive(@time_stamp, 'dataset')
         expect(BqStream::OldestRecord.where(archived: false)).to be_empty
       end
     end
