@@ -89,7 +89,7 @@ module BqStream
     end
 
     def dequeue_items
-      log_code = rand(2**256).to_s(36)[0..7]
+      # log_code = rand(2**256).to_s(36)[0..7]
       # log(:info, "#{Time.now}: ***** Dequeue Items Started ***** #{log_code}")
       if back_date && (OldestRecord.all.empty? || !OldestRecord.where('bq_earliest_update >= ?', BqStream.back_date).empty?)
         verify_oldest_records
