@@ -89,28 +89,33 @@ module BqStream
     end
 
     def dequeue_items
-      log_code = rand(2**256).to_s(36)[0..7]
-      log(:info, "#{Time.now}: ***** Dequeue Items Started ***** #{log_code}")
+      dequeue_time = Time.now
+      # log_code = rand(2**256).to_s(36)[0..7]
+      # log(:info, "#{Time.now}: ***** Dequeue Items Started ***** #{log_code}")
       if back_date && (OldestRecord.all.empty? || !OldestRecord.where('bq_earliest_update >= ?', BqStream.back_date).empty?)
         verify_oldest_records
         OldestRecord.update_bq_earliest
       end
       create_bq_writer
       # Batch sending to BigQuery is limited to 10_000 rows
-      records = QueuedItem.where(sent_to_bq: nil) # .limit([batch_size, 10_000].min)
+      records =
+        QueuedItem.where(sent_to_bq: nil).where('updated_at < ?', dequeue_time).limit([batch_size, 10_000].min)
       data = records.collect do |i|
         new_val = encode_value(i.new_value) rescue nil
         { table_name: i.table_name, record_id: i.record_id, attr: i.attr,
           new_value: new_val ? new_val : i.new_value, updated_at: i.updated_at }
       end
+      log(:info, "#{Time.now}: #{data}")
       insertion = data.empty? ? false : @bq_writer.insert(bq_table_name, data) rescue nil
       if insertion.nil?
         log(:info, "#{Time.now}: ***** BigQuery Insertion to #{project_id}:#{dataset}.#{bq_table_name} Failed *****")
         Rollbar.error("BigQuery Insertion to #{project_id}:#{dataset}.#{bq_table_name} Failed") if report_to_rollbar
+      else
+        log(:info, "#{Time.now}: ***** #{insertion} *****")
+        records.update_all(sent_to_bq: true, time_sent: Time.current)
+        # QueuedItem.where(sent_to_bq: true).delete_all
       end
-      records.update_all(sent_to_bq: true, time_sent: Time.current) if insertion
-      # QueuedItem.where(sent_to_bq: true).delete_all
-      log(:info, "#{Time.now}: ***** Dequeue Items Ended ***** #{log_code}")
+      # log(:info, "#{Time.now}: ***** Dequeue Items Ended ***** #{log_code}")
     end
 
     def insert_missing_records(records, bq_attributes)
