@@ -89,6 +89,7 @@ module BqStream
     end
 
     def dequeue_items
+      dequeue_time = Time.now
       # log_code = rand(2**256).to_s(36)[0..7]
       # log(:info, "#{Time.now}: ***** Dequeue Items Started ***** #{log_code}")
       if back_date && (OldestRecord.all.empty? || !OldestRecord.where('bq_earliest_update >= ?', BqStream.back_date).empty?)
@@ -98,7 +99,7 @@ module BqStream
       create_bq_writer
       # Batch sending to BigQuery is limited to 10_000 rows
       records =
-        QueuedItem.where(sent_to_bq: nil).where('updated_at < ?', Time.now - 1.minute).limit([batch_size, 10_000].min)
+        QueuedItem.where(sent_to_bq: nil).where('updated_at < ?', dequeue_time).limit([batch_size, 10_000].min)
       data = records.collect do |i|
         new_val = encode_value(i.new_value) rescue nil
         { table_name: i.table_name, record_id: i.record_id, attr: i.attr,
