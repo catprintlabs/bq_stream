@@ -137,9 +137,7 @@ module BqStream
         unless records.empty?
           time_sent = Time.current
           records.each do |record|
-            record.sent_to_bq = true
-            record.time_sent = time_sent
-            record.save
+            record.update_attributes(sent_to_bq: true, time_sent: time_sent)
           end
         end
         # QueuedItem.where(sent_to_bq: true).delete_all
