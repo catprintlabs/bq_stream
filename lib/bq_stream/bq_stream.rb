@@ -144,7 +144,6 @@ module BqStream
         end
         # QueuedItem.where(sent_to_bq: true).delete_all
       end
-      # binding.pry
       # log(:info, "#{Time.now}: ***** Dequeue Items Ended ***** #{log_code}")
     end
 
