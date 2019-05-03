@@ -67,14 +67,16 @@ module BqStream
       log(:info, "#{Time.now}: ***** Oldest Record Revision: #{revision.attr} *****") if revision
       log(:info, "#{Time.now}: ***** Current Deploy: #{current_deploy} *****")
       return if revision && revision.attr == current_deploy
-      @bq_attributes.each do |k, v|
-        # add any records to oldest_records that are new (Or more simply make sure that that there is a record using find_by_or_create)
-        v.each do |bqa|
-          OldestRecord.find_or_create_by(table_name: k, attr: bqa)
-        end
-        # delete any records that are not in bq_attributes
-        OldestRecord.where(table_name: k).each do |rec|
-          rec.destroy unless v.include?(rec.attr.to_sym)
+      if @bq_attributes
+        @bq_attributes.each do |k, v|
+          # add any records to oldest_records that are new (Or more simply make sure that that there is a record using find_by_or_create)
+          v.each do |bqa|
+            OldestRecord.find_or_create_by(table_name: k, attr: bqa)
+          end
+          # delete any records that are not in bq_attributes
+          OldestRecord.where(table_name: k).each do |rec|
+            rec.destroy unless v.include?(rec.attr.to_sym)
+          end
         end
       end
       log(:info, "#{Time.now}: ***** Updating Oldest Record Revision to #{current_deploy} *****")
@@ -90,6 +92,7 @@ module BqStream
 
     def dequeue_items
       dequeue_time = Time.now
+      log(:info, "#{Time.now}: ***** Dequeue Time #{dequeue_time} *****")
       # log_code = rand(2**256).to_s(36)[0..7]
       # log(:info, "#{Time.now}: ***** Dequeue Items Started ***** #{log_code}")
       if back_date && (OldestRecord.all.empty? || !OldestRecord.where('bq_earliest_update >= ?', BqStream.back_date).empty?)
@@ -98,23 +101,50 @@ module BqStream
       end
       create_bq_writer
       # Batch sending to BigQuery is limited to 10_000 rows
-      records =
+      # Initiate the records to be compared to the data that will be sent to BigQuery
+      prep_records =
         QueuedItem.where(sent_to_bq: nil).where('updated_at < ?', dequeue_time).limit([batch_size, 10_000].min)
-      data = records.collect do |i|
+      # Create data hash that will be sent to BigQuery  
+      data = prep_records.collect do |i|
         new_val = encode_value(i.new_value) rescue nil
         { table_name: i.table_name, record_id: i.record_id, attr: i.attr,
           new_value: new_val ? new_val : i.new_value, updated_at: i.updated_at }
       end
+      records =[]
+      # Compare prep_records to data and create a new array of the records actually being sent to BigQuery
+      unless prep_records.empty?
+        prep_records.each do |record|
+          if data.any? { |h| h.stringify_keys == record.as_json.except("id", "sent_to_bq", "time_sent") }
+            records << record
+          else
+            Rollbar.error("BigQuery: Record missing from data! #{record.id} | #{record.table_name} | #{record.record_id} | #{record.attr} | #{record.new_value} | #{record.updated_at}") if report_to_rollbar
+          end
+        end
+      end
+      log(:info, "#{Time.now}: !!!!! Prep Records !!!!!")
+      log(:info, "#{Time.now}: #{prep_records}")
+      log(:info, "#{Time.now}: !!!!! Data !!!!!")
       log(:info, "#{Time.now}: #{data}")
+      log(:info, "#{Time.now}: !!!!! Records !!!!!")
+      log(:info, "#{Time.now}: #{records}")
+      # Set up insertion of records that are in the data hash and then insert to BigQuery
       insertion = data.empty? ? false : @bq_writer.insert(bq_table_name, data) rescue nil
       if insertion.nil?
         log(:info, "#{Time.now}: ***** BigQuery Insertion to #{project_id}:#{dataset}.#{bq_table_name} Failed *****")
         Rollbar.error("BigQuery Insertion to #{project_id}:#{dataset}.#{bq_table_name} Failed") if report_to_rollbar
       else
         log(:info, "#{Time.now}: ***** #{insertion} *****")
-        records.update_all(sent_to_bq: true, time_sent: Time.current)
+        unless records.empty?
+          time_sent = Time.current
+          records.each do |record|
+            record.sent_to_bq = true
+            record.time_sent = time_sent
+            record.save
+          end
+        end
         # QueuedItem.where(sent_to_bq: true).delete_all
       end
+      # binding.pry
       # log(:info, "#{Time.now}: ***** Dequeue Items Ended ***** #{log_code}")
     end
 
