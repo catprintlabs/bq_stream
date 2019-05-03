@@ -67,16 +67,14 @@ module BqStream
       log(:info, "#{Time.now}: ***** Oldest Record Revision: #{revision.attr} *****") if revision
       log(:info, "#{Time.now}: ***** Current Deploy: #{current_deploy} *****")
       return if revision && revision.attr == current_deploy
-      if @bq_attributes
-        @bq_attributes.each do |k, v|
-          # add any records to oldest_records that are new (Or more simply make sure that that there is a record using find_by_or_create)
-          v.each do |bqa|
-            OldestRecord.find_or_create_by(table_name: k, attr: bqa)
-          end
-          # delete any records that are not in bq_attributes
-          OldestRecord.where(table_name: k).each do |rec|
-            rec.destroy unless v.include?(rec.attr.to_sym)
-          end
+      @bq_attributes&.each do |k, v|
+        # add any records to oldest_records that are new (Or more simply make sure that that there is a record using find_by_or_create)
+        v.each do |bqa|
+          OldestRecord.find_or_create_by(table_name: k, attr: bqa)
+        end
+        # delete any records that are not in bq_attributes
+        OldestRecord.where(table_name: k).each do |rec|
+          rec.destroy unless v.include?(rec.attr.to_sym)
         end
       end
       log(:info, "#{Time.now}: ***** Updating Oldest Record Revision to #{current_deploy} *****")
@@ -112,13 +110,11 @@ module BqStream
       end
       records =[]
       # Compare prep_records to data and create a new array of the records actually being sent to BigQuery
-      unless prep_records.empty?
-        prep_records.each do |record|
-          if data.any? { |h| h.stringify_keys == record.as_json.except("id", "sent_to_bq", "time_sent") }
-            records << record
-          else
-            Rollbar.error("BigQuery: Record missing from data! #{record.id} | #{record.table_name} | #{record.record_id} | #{record.attr} | #{record.new_value} | #{record.updated_at}") if report_to_rollbar
-          end
+      prep_records.each do |record|
+        if data.any? { |h| h.stringify_keys == record.as_json.except("id", "sent_to_bq", "time_sent") }
+          records << record
+        else
+          Rollbar.error("BigQuery: Record missing from data! #{record.id} | #{record.table_name} | #{record.record_id} | #{record.attr} | #{record.new_value} | #{record.updated_at}") if report_to_rollbar
         end
       end
       log(:info, "#{Time.now}: !!!!! Prep Records !!!!!")
@@ -134,12 +130,8 @@ module BqStream
         Rollbar.error("BigQuery Insertion to #{project_id}:#{dataset}.#{bq_table_name} Failed") if report_to_rollbar
       else
         log(:info, "#{Time.now}: ***** #{insertion} *****")
-        unless records.empty?
-          time_sent = Time.current
-          records.each do |record|
-            record.update_attributes(sent_to_bq: true, time_sent: time_sent)
-          end
-        end
+        time_sent = Time.current
+        records.each { |record| record.update_attributes(sent_to_bq: true, time_sent: time_sent) }
         # QueuedItem.where(sent_to_bq: true).delete_all
       end
       # log(:info, "#{Time.now}: ***** Dequeue Items Ended ***** #{log_code}")
