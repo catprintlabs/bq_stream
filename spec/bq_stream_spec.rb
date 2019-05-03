@@ -614,7 +614,6 @@ describe BqStream do
                      attr: 'Destroyed',
                      new_value: 'True',
                      updated_at: time_stamp }]]]])
-      # binding.pry
       expect(BqStream::QueuedItem.all.as_json)
         .to eq([{
                   'id' => 1,
