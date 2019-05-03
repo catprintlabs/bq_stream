@@ -129,9 +129,10 @@ module BqStream
         log(:info, "#{Time.now}: ***** BigQuery Insertion to #{project_id}:#{dataset}.#{bq_table_name} Failed *****")
         Rollbar.error("BigQuery Insertion to #{project_id}:#{dataset}.#{bq_table_name} Failed") if report_to_rollbar
       else
+        records_sent = QueuedItem.where('id IN (?)', records.map(&:id))
         log(:info, "#{Time.now}: ***** #{insertion} *****")
         time_sent = Time.current
-        records.each { |record| record.update_attributes(sent_to_bq: true, time_sent: time_sent) }
+        records_sent.update_all(sent_to_bq: true, time_sent: Time.current)
         # QueuedItem.where(sent_to_bq: true).delete_all
       end
       # log(:info, "#{Time.now}: ***** Dequeue Items Ended ***** #{log_code}")

@@ -616,132 +616,12 @@ describe BqStream do
                      updated_at: time_stamp }]]]])
       expect(BqStream::QueuedItem.all.as_json)
         .to eq([{
-                  'id' => 1,
-                  'table_name' => 'TableFirst',
-                  'record_id' => @first_record.id,
-                  'attr' => 'id',
-                  'new_value' => @first_record.id.to_s,
-                  'updated_at' => @time_stamp + 5.minutes,
-                  'sent_to_bq' => true,
-                  'time_sent' => @time_stamp + 5.minutes
-                },
-                {
-                  'id' => 2,
-                  'table_name' => 'TableFirst',
-                  'record_id' => @first_record.id,
-                  'attr' => 'name',
-                  'new_value' => 'primary record',
-                  'updated_at' => @time_stamp + 5.minutes,
-                  'sent_to_bq' => true,
-                  'time_sent' => @time_stamp + 5.minutes
-                },
-                {
-                  'id' => 3,
-                  'table_name' => 'TableFirst',
-                  'record_id' => @first_record.id,
-                  'attr' => 'description',
-                  'new_value' => 'first into the table',
-                  'updated_at' => @time_stamp + 5.minutes,
-                  'sent_to_bq' => true,
-                  'time_sent' => @time_stamp + 5.minutes
-                },
-                {
-                  'id' => 4,
-                  'table_name' => 'TableFirst',
-                  'record_id' => @first_record.id,
-                  'attr' => 'required',
-                  'new_value' => 'true',
-                  'updated_at' => @time_stamp + 5.minutes,
-                  'sent_to_bq' => true,
-                  'time_sent' => @time_stamp + 5.minutes
-                },
-                {
-                  'id' => 5,
-                  'table_name' => 'TableFirst',
-                  'record_id' => @first_record.id,
-                  'attr' => 'created_at',
-                  'new_value' => @time_stamp.to_s,
-                  'updated_at' => @time_stamp + 5.minutes,
-                  'sent_to_bq' => true,
-                  'time_sent' => @time_stamp + 5.minutes
-                },
-                {
-                  'id' => 6,
-                  'table_name' => 'TableFirst',
-                  'record_id' => @first_record.id,
-                  'attr' => 'updated_at',
-                  'new_value' => @time_stamp.to_s,
-                  'updated_at' => @time_stamp + 5.minutes,
-                  'sent_to_bq' => true,
-                  'time_sent' => @time_stamp + 5.minutes
-                },
-                {
-                  'id' => 7,
-                  'table_name' => 'TableSecond',
-                  'record_id' => @second_record.id,
-                  'attr' => 'name',
-                  'new_value' => 'secondary record',
-                  'updated_at' => @time_stamp + 5.minutes,
-                  'sent_to_bq' => true,
-                  'time_sent' => @time_stamp + 5.minutes
-                },
-                {
-                  'id' => 8,
-                  'table_name' => 'TableSecond',
-                  'record_id' => @second_record.id,
-                  'attr' => 'status',
-                  'new_value' => 'active',
-                  'updated_at' => @time_stamp + 5.minutes,
-                  'sent_to_bq' => true,
-                  'time_sent' => @time_stamp + 5.minutes
-                },
-                {
-                  'id' => 9,
-                  'table_name' => 'TableThird',
-                  'record_id' => @third_record.id,
-                  'attr' => 'name',
-                  'new_value' => 'third record',
-                  'updated_at' => @time_stamp + 5.minutes,
-                  'sent_to_bq' => true,
-                  'time_sent' => @time_stamp + 5.minutes
-                },
-                {
-                  'id' => 10,
-                  'table_name' => 'TableThird',
-                  'record_id' => @third_record.id,
-                  'attr' => 'notes',
-                  'new_value' => '12.50',
-                  'updated_at' => @time_stamp + 5.minutes,
-                  'sent_to_bq' => true,
-                  'time_sent' => @time_stamp + 5.minutes
-                },
-                {
-                  'id' => 11,
-                  'table_name' => 'TableThird',
-                  'record_id' => @third_record.id,
-                  'attr' => 'updated_at',
-                  'new_value' => @time_stamp.to_s,
-                  'updated_at' => @time_stamp + 5.minutes,
-                  'sent_to_bq' => true,
-                  'time_sent' => @time_stamp + 5.minutes
-                },
-                {
-                  'id' => 12,
-                  'table_name' => 'TableSecond',
-                  'record_id' => @second_record.id,
-                  'attr' => 'Destroyed',
-                  'new_value' => 'True',
-                  'updated_at' => @time_stamp + 5.minutes,
-                  'sent_to_bq' => true,
-                  'time_sent' => @time_stamp + 5.minutes
-                },
-                {
                   'id' => 13,
                   'table_name' => 'TableThird',
                   'record_id' => 2,
                   'attr' => 'name',
                   'new_value' => 'old record',
-                  'updated_at' => @time_stamp + 5.minutes,
+                  'updated_at' => Time.parse('2016-09-21 04:00:00 UTC'),
                   'sent_to_bq' => true,
                   'time_sent' => @time_stamp + 5.minutes
                 },
@@ -751,7 +631,7 @@ describe BqStream do
                   'record_id' => 2,
                   'attr' => 'notes',
                   'new_value' => 'an old record',
-                  'updated_at' => @time_stamp + 5.minutes,
+                  'updated_at' => Time.parse('2016-09-21 04:00:00 UTC'),
                   'sent_to_bq' => true,
                   'time_sent' => @time_stamp + 5.minutes
                 },
@@ -761,7 +641,127 @@ describe BqStream do
                   'record_id' => 2,
                   'attr' => 'updated_at',
                   'new_value' => Time.parse('2016-09-21 04:00:00 UTC').to_s,
-                  'updated_at' => @time_stamp + 5.minutes,
+                  'updated_at' => Time.parse('2016-09-21 04:00:00 UTC'),
+                  'sent_to_bq' => true,
+                  'time_sent' => @time_stamp + 5.minutes
+                },
+                {
+                  'id' => 1,
+                  'table_name' => 'TableFirst',
+                  'record_id' => @first_record.id,
+                  'attr' => 'id',
+                  'new_value' => @first_record.id.to_s,
+                  'updated_at' => @time_stamp,
+                  'sent_to_bq' => true,
+                  'time_sent' => @time_stamp + 5.minutes
+                },
+                {
+                  'id' => 2,
+                  'table_name' => 'TableFirst',
+                  'record_id' => @first_record.id,
+                  'attr' => 'name',
+                  'new_value' => 'primary record',
+                  'updated_at' => @time_stamp,
+                  'sent_to_bq' => true,
+                  'time_sent' => @time_stamp + 5.minutes
+                },
+                {
+                  'id' => 3,
+                  'table_name' => 'TableFirst',
+                  'record_id' => @first_record.id,
+                  'attr' => 'description',
+                  'new_value' => 'first into the table',
+                  'updated_at' => @time_stamp,
+                  'sent_to_bq' => true,
+                  'time_sent' => @time_stamp + 5.minutes
+                },
+                {
+                  'id' => 4,
+                  'table_name' => 'TableFirst',
+                  'record_id' => @first_record.id,
+                  'attr' => 'required',
+                  'new_value' => 'true',
+                  'updated_at' => @time_stamp,
+                  'sent_to_bq' => true,
+                  'time_sent' => @time_stamp + 5.minutes
+                },
+                {
+                  'id' => 5,
+                  'table_name' => 'TableFirst',
+                  'record_id' => @first_record.id,
+                  'attr' => 'created_at',
+                  'new_value' => @time_stamp.to_s,
+                  'updated_at' => @time_stamp,
+                  'sent_to_bq' => true,
+                  'time_sent' => @time_stamp + 5.minutes
+                },
+                {
+                  'id' => 6,
+                  'table_name' => 'TableFirst',
+                  'record_id' => @first_record.id,
+                  'attr' => 'updated_at',
+                  'new_value' => @time_stamp.to_s,
+                  'updated_at' => @time_stamp,
+                  'sent_to_bq' => true,
+                  'time_sent' => @time_stamp + 5.minutes
+                },
+                {
+                  'id' => 7,
+                  'table_name' => 'TableSecond',
+                  'record_id' => @second_record.id,
+                  'attr' => 'name',
+                  'new_value' => 'secondary record',
+                  'updated_at' => @time_stamp,
+                  'sent_to_bq' => true,
+                  'time_sent' => @time_stamp + 5.minutes
+                },
+                {
+                  'id' => 8,
+                  'table_name' => 'TableSecond',
+                  'record_id' => @second_record.id,
+                  'attr' => 'status',
+                  'new_value' => 'active',
+                  'updated_at' => @time_stamp,
+                  'sent_to_bq' => true,
+                  'time_sent' => @time_stamp + 5.minutes
+                },
+                {
+                  'id' => 9,
+                  'table_name' => 'TableThird',
+                  'record_id' => @third_record.id,
+                  'attr' => 'name',
+                  'new_value' => 'third record',
+                  'updated_at' => @time_stamp,
+                  'sent_to_bq' => true,
+                  'time_sent' => @time_stamp + 5.minutes
+                },
+                {
+                  'id' => 10,
+                  'table_name' => 'TableThird',
+                  'record_id' => @third_record.id,
+                  'attr' => 'notes',
+                  'new_value' => '12.50',
+                  'updated_at' => @time_stamp,
+                  'sent_to_bq' => true,
+                  'time_sent' => @time_stamp + 5.minutes
+                },
+                {
+                  'id' => 11,
+                  'table_name' => 'TableThird',
+                  'record_id' => @third_record.id,
+                  'attr' => 'updated_at',
+                  'new_value' => @time_stamp.to_s,
+                  'updated_at' => @time_stamp,
+                  'sent_to_bq' => true,
+                  'time_sent' => @time_stamp + 5.minutes
+                },
+                {
+                  'id' => 12,
+                  'table_name' => 'TableSecond',
+                  'record_id' => @second_record.id,
+                  'attr' => 'Destroyed',
+                  'new_value' => 'True',
+                  'updated_at' => @time_stamp,
                   'sent_to_bq' => true,
                   'time_sent' => @time_stamp + 5.minutes
                 }])
