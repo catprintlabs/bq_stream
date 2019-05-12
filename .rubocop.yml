@@ -1,0 +1,23 @@
+require: rubocop-performance
+
+AllCops:
+  TargetRubyVersion: 2.6
+
+Layout/AlignHash:
+  EnforcedHashRocketStyle: table
+  EnforcedColonStyle: table
+
+# Multi-line method chaining should be done with trailing dots.
+Layout/DotPosition:
+  EnforcedStyle: leading
+  SupportedStyles:
+    - leading
+    - trailing
+
+Metrics/AbcSize:
+  # The ABC size is a calculated magnitude, so this number can be a Fixnum or
+  # a Float.
+  Max: 20
+
+Metrics/LineLength:
+  Max: 100

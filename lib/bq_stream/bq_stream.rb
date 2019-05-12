@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'big_query'
 
 module BqStream
@@ -23,12 +25,14 @@ module BqStream
 
     def log(type, message)
       return unless logger
+
       type = :info unless %i[unknown fatal error warn info debug].include?(type)
       logger.send(type, message)
     end
 
     def error_log(type, message)
       return unless logger
+
       type = :error unless %i[unknown fatal error warn info debug].include?(type)
       error_logger.send(type, message)
     end
@@ -66,7 +70,9 @@ module BqStream
       revision = OldestRecord.find_by_table_name('! revision !')
       log(:info, "#{Time.now}: ***** Oldest Record Revision: #{revision.attr} *****") if revision
       log(:info, "#{Time.now}: ***** Current Deploy: #{current_deploy} *****")
+
       return if revision && revision.attr == current_deploy
+
       @bq_attributes&.each do |k, v|
         # add any records to oldest_records that are new (Or more simply make sure that that there is a record using find_by_or_create)
         v.each do |bqa|
@@ -83,58 +89,78 @@ module BqStream
       update_revision.update(attr: current_deploy, archived: true)
     end
 
-    def encode_value(value)
-      value.encode('utf-8', invalid: :replace,
-                            undef: :replace, replace: '_') rescue nil
-    end
-
     def dequeue_items
-      dequeue_time = Time.now
-      log(:info, "#{Time.now}: ***** Dequeue Time #{dequeue_time} *****")
+      dequeue_time = Time.current
+
+      log(:info, "***** Dequeue Time #{dequeue_time} *****")
+
       # log_code = rand(2**256).to_s(36)[0..7]
       # log(:info, "#{Time.now}: ***** Dequeue Items Started ***** #{log_code}")
-      if back_date && (OldestRecord.all.empty? || !OldestRecord.where('bq_earliest_update >= ?', BqStream.back_date).empty?)
+      if back_date && (OldestRecord.all.empty? ||
+                       !OldestRecord.where('bq_earliest_update >= ?', BqStream.back_date).empty?)
         verify_oldest_records
         OldestRecord.update_bq_earliest
       end
+
       create_bq_writer
+
       # Batch sending to BigQuery is limited to 10_000 rows
       # Initiate the records to be compared to the data that will be sent to BigQuery
-      prep_records =
-        QueuedItem.where(sent_to_bq: nil).where('updated_at < ?', dequeue_time).limit([batch_size, 10_000].min)
-      # Create data hash that will be sent to BigQuery  
-      data = prep_records.collect do |i|
-        new_val = encode_value(i.new_value) rescue nil
-        { table_name: i.table_name, record_id: i.record_id, attr: i.attr,
-          new_value: new_val ? new_val : i.new_value, updated_at: i.updated_at }
-      end
-      records =[]
-      # Compare prep_records to data and create a new array of the records actually being sent to BigQuery
-      prep_records.each do |record|
-        if data.any? { |h| h.stringify_keys == record.as_json.except("id", "sent_to_bq", "time_sent") }
-          records << record
+      records = QueuedItem.where(sent_to_bq: nil).where('updated_at < ?', dequeue_time)
+                          .limit([batch_size, 10_000].min)
+
+      return if records.empty?
+
+      # Create data hash that will be sent to BigQuery
+      stream_data = records.map { |record| record_as_hash(record) }
+
+      # Compare records to data and create a new array of the records actually being sent
+      records_to_send = records.map do |record|
+        record_as_json = record.as_json.except('id', 'sent_to_bq', 'time_sent')
+
+        if stream_data.any? { |h| h.stringify_keys == record_as_json }
+          record
         else
-          Rollbar.error("BigQuery: Record missing from data! #{record.id} | #{record.table_name} | #{record.record_id} | #{record.attr} | #{record.new_value} | #{record.updated_at}") if report_to_rollbar
+          if report_to_rollbar
+            Rollbar.warning('BigQuery: Record missing from data!', record: record)
+          end
+
+          nil
         end
-      end
-      log(:info, "#{Time.now}: !!!!! Prep Records !!!!!")
-      log(:info, "#{Time.now}: #{prep_records}")
-      log(:info, "#{Time.now}: !!!!! Data !!!!!")
-      log(:info, "#{Time.now}: #{data}")
-      log(:info, "#{Time.now}: !!!!! Records !!!!!")
-      log(:info, "#{Time.now}: #{records}")
+      end.compact
+
+      log(:info, "!!!!! Records !!!!!\n#{records}")
+      log(:info, "!!!!! Stream Data !!!!!\n#{stream_data}")
+      log(:info, "!!!!! Records Sent !!!!!\n#{records_to_send}")
+
+      return if stream_data.empty?
+
       # Set up insertion of records that are in the data hash and then insert to BigQuery
-      insertion = data.empty? ? false : @bq_writer.insert(bq_table_name, data) rescue nil
-      if insertion.nil?
-        log(:info, "#{Time.now}: ***** BigQuery Insertion to #{project_id}:#{dataset}.#{bq_table_name} Failed *****")
-        Rollbar.error("BigQuery Insertion to #{project_id}:#{dataset}.#{bq_table_name} Failed") if report_to_rollbar
-      else
-        records_sent = QueuedItem.where('id IN (?)', records.map(&:id))
-        log(:info, "#{Time.now}: ***** #{insertion} *****")
-        time_sent = Time.current
-        records_sent.update_all(sent_to_bq: true, time_sent: Time.current)
-        # QueuedItem.where(sent_to_bq: true).delete_all
+      begin
+        insertion = @bq_writer.insert(bq_table_name, stream_data)
+      rescue StandardError => e
+        log(:info, "***** Insertion to #{project_id}:#{dataset}.#{bq_table_name} Failed *****")
+
+        if report_to_rollbar
+          Rollbar.error(
+            e,
+            'Failed to write data to BigQuery',
+            project_id:    project_id,
+            dataset:       dataset,
+            bq_table_name: bq_table_name
+          )
+        end
+
+        return false
       end
+
+      records_sent = QueuedItem.where('id IN (?)', records_to_send.map(&:id))
+
+      log(:info, "***** #{insertion} *****")
+
+      records_sent.update_all(sent_to_bq: true, time_sent: Time.current)
+      # QueuedItem.where(sent_to_bq: true).delete_all
+
       # log(:info, "#{Time.now}: ***** Dequeue Items Ended ***** #{log_code}")
     end
 
@@ -158,6 +184,33 @@ module BqStream
                           new_value:    { type: 'STRING', mode: 'NULLABLE' },
                           updated_at:   { type: 'TIMESTAMP', mode: 'REQUIRED' } }
       @bq_writer.create_table(bq_table_name, bq_table_schema)
+    end
+
+    private
+
+    # Force data into UTF-8 format for BigData
+    def encode_new_value(record)
+      record.new_value.force_encoding('utf-8')
+
+      record.new_value =
+        record.new_value.encode('utf-8', invalid: :replace, undef: :replace, replace: '_')
+    rescue StandardError => e
+      Rollbar.error(e, 'Failed to encode value to UTF-8', record: record) if report_to_rollbar
+
+      nil
+    end
+
+    # Build a hash representation of a record expected by BigData
+    def record_as_hash(record)
+      encode_new_value(record)
+
+      {
+        table_name: record.table_name,
+        record_id:  record.record_id,
+        attr:       record.attr,
+        new_value:  record.new_value,
+        updated_at: record.updated_at
+      }
     end
   end
 end
