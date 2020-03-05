@@ -61,13 +61,11 @@ module BqStream
     # Destroy or create rows based on the current bq attributes for given table
     def verify_oldest_records
       log(:info, "#{Time.now}: ***** Verifying Oldest Records *****")
-      current_deploy =
-        if File.exist?(`cat #{File.expand_path ''}/REVISION`)
-          `cat #{File.expand_path ''}/REVISION`
-        else
-          'None'
-        end
-      revision = OldestRecord.find_by_table_name('! revision !')
+
+      revision_file_path = File.join(Dir.pwd, 'REVISION')
+      current_deploy     = File.exist?(revision_file_path) ? `cat #{revision_file_path}` : 'None'
+      revision           = OldestRecord.find_by_table_name('! revision !')
+
       log(:info, "#{Time.now}: ***** Oldest Record Revision: #{revision.attr} *****") if revision
       log(:info, "#{Time.now}: ***** Current Deploy: #{current_deploy} *****")
 
@@ -96,8 +94,7 @@ module BqStream
 
       # log_code = rand(2**256).to_s(36)[0..7]
       # log(:info, "#{Time.now}: ***** Dequeue Items Started ***** #{log_code}")
-      if back_date && (OldestRecord.all.empty? ||
-                       !OldestRecord.where('bq_earliest_update >= ?', BqStream.back_date).empty?)
+      if back_date && (OldestRecord.all.empty? || !OldestRecord.where('bq_earliest_update >= ?', BqStream.back_date).empty?)
         verify_oldest_records
         OldestRecord.update_bq_earliest
       end
