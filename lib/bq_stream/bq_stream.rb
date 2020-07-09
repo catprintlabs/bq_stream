@@ -156,7 +156,7 @@ module BqStream
       log(:info, "***** #{insertion} *****")
 
       records_sent.update_all(sent_to_bq: true, time_sent: Time.current)
-      # QueuedItem.where(sent_to_bq: true).delete_all
+      QueuedItem.where(sent_to_bq: true).delete_all
 
       # log(:info, "#{Time.now}: ***** Dequeue Items Ended ***** #{log_code}")
     end
