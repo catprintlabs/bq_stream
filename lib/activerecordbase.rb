@@ -23,7 +23,7 @@ class ActiveRecord::Base
       BqStream.register_bq_attributes(name, bq_atr_of_interest)
 
       after_save do
-        save_changes.each do |k, v|
+        saved_changes.each do |k, v|
           transaction_changed_attributes[k] = v[1]
         end
       end
