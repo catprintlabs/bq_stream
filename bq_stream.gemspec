@@ -7,8 +7,8 @@ require 'bq_stream/version'
 Gem::Specification.new do |spec|
   spec.name          = 'bq_stream'
   spec.version       = BqStream::VERSION
-  spec.authors       = ['Todd J Russell']
-  spec.email         = ['todd@catprint.com']
+  spec.authors       = ['Jon Weaver']
+  spec.email         = ['jon@catprint.com']
 
   spec.summary       = 'This is a gem to write records '\
                        'from your database to BigQuery'
